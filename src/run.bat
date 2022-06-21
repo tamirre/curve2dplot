@@ -1,2 +1,2 @@
 @echo off
-e:\tamir\gui\src\build\main.exe
+d:\programming\gui\src\build\main.exe
