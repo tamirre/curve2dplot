@@ -1,0 +1,25 @@
+Currently the following dependencies need to be satisfied:
+glfw
+OpgenGL <= 2
+gcc compiler with C++11 
+
+##################################################################
+
+CentOS7 yum commands to enable building with makefile:
+
+yum update
+yum install epel-release
+yum install glfw
+yum install glfw-devel
+yum install mesa-libGL
+yum install mesa-libGL-devel
+yum install centos-release-scl-rh
+yum install devtool-10-toolchain
+
+in die bashrc:
+source scl_source enable devtoolset-10
+
+X-Forwarding unter WSL:
+yum install  xorg-x11-server-Xorg xorg-x11-xauth xorg-x11-apps -y
+export LIBGL_ALWAYS_INDIRECT=1
+export DISPLAY=$(ip route | awk '/^default/{print $3; exit}'):0

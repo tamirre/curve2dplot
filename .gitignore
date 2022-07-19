@@ -3,3 +3,5 @@ src/shell.bat
 src/run.bat
 src/build.bat
 *.o
+imgui.ini
+*.ini
