@@ -7,3 +7,5 @@ src/build.bat
 *.o
 imgui.ini
 *.ini
+run.bat
+build.bat
