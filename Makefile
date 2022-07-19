@@ -14,71 +14,82 @@
 #CXX = g++
 #CXX = clang++
 
-EXE = main
+UNAME_S := $(shell uname -s)
+BUILD_DIR = build-$(UNAME_S)
+BIN_DIR = bin
+$(shell mkdir -p $(BUILD_DIR))
+EXE = $(BUILD_DIR)/main
 IMGUI_DIR = src/imgui-docking
 IMPLOT_DIR = src/implot
 IMGUIFILEDIALOG_DIR = src/ImGuiFileDialog
 SOURCES = src/main.cpp
 SOURCES += $(IMGUI_DIR)/imgui.cpp $(IMGUI_DIR)/imgui_demo.cpp $(IMGUI_DIR)/imgui_draw.cpp $(IMGUI_DIR)/imgui_tables.cpp $(IMGUI_DIR)/imgui_widgets.cpp $(IMPLOT_DIR)/implot.cpp $(IMPLOT_DIR)/implot_items.cpp $(IMPLOT_DIR)/implot_demo.cpp $(IMGUIFILEDIALOG_DIR)/ImGuiFileDialog.cpp
 SOURCES += $(IMGUI_DIR)/backends/imgui_impl_glfw.cpp $(IMGUI_DIR)/backends/imgui_impl_opengl2.cpp
-OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
-UNAME_S := $(shell uname -s)
+OBJS = $(addprefix $(BUILD_DIR)/, $(addsuffix .o, $(basename $(notdir $(SOURCES)))))
 
 CXXFLAGS = -std=c++11 -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends -I$(IMPLOT_DIR) -I$(IMGUIFILEDIALOG_DIR)
 CXXFLAGS += -g -Wall -Wformat
-LIBS = 
+LIBS =
 
 ##---------------------------------------------------------------------
 ## BUILD FLAGS PER PLATFORM
 ##---------------------------------------------------------------------
 
 ifeq ($(UNAME_S), Linux) #LINUX
-	ECHO_MESSAGE = "Linux"
-	LIBS += -lGL `pkg-config --static --libs glfw3`
+        ECHO_MESSAGE = "Linux"
+        LIBS += -lGL `pkg-config --static --libs glfw3`
 
-	CXXFLAGS += `pkg-config --cflags glfw3`
-	CFLAGS = $(CXXFLAGS)
+        CXXFLAGS += `pkg-config --cflags glfw3`
+        CFLAGS = $(CXXFLAGS)
 endif
 
 ifeq ($(UNAME_S), Darwin) #APPLE
-	ECHO_MESSAGE = "Mac OS X"
-	LIBS += -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
-	LIBS += -L/usr/local/lib -L/opt/local/lib -L/opt/homebrew/lib
-	#LIBS += -lglfw3
-	LIBS += -lglfw
+        ECHO_MESSAGE = "Mac OS X"
+        LIBS += -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
+        LIBS += -L/usr/local/lib -L/opt/local/lib -L/opt/homebrew/lib
+        #LIBS += -lglfw3
+        LIBS += -lglfw
 
-	CXXFLAGS += -I/usr/local/include -I/opt/local/include -I/opt/homebrew/include
-	CFLAGS = $(CXXFLAGS)
+        CXXFLAGS += -I/usr/local/include -I/opt/local/include -I/opt/homebrew/include
+        CFLAGS = $(CXXFLAGS)
 endif
 
 ifeq ($(OS), Windows_NT)
-	ECHO_MESSAGE = "MinGW"
-	LIBS += -lglfw3 -lgdi32 -lopengl32 -limm32
+        ECHO_MESSAGE = "MinGW"
+        LIBS += -lglfw3 -lgdi32 -lopengl32 -limm32
 
-	CXXFLAGS += `pkg-config --cflags glfw3`
-	CFLAGS = $(CXXFLAGS)
+        CXXFLAGS += `pkg-config --cflags glfw3`
+        CFLAGS = $(CXXFLAGS)
 endif
 
 ##---------------------------------------------------------------------
 ## BUILD RULES
 ##---------------------------------------------------------------------
+# $(info objs: $(OBJS))
 
-%.o:src/%.cpp
+$(BUILD_DIR)/%.o:src/%.cpp
+	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-%.o:$(IMGUI_DIR)/%.cpp
+$(BUILD_DIR)/%.o:$(IMGUI_DIR)/%.cpp
+	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-%.o:$(IMGUI_DIR)/backends/%.cpp
+$(BUILD_DIR)/%.o:$(IMGUI_DIR)/backends/%.cpp
+	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-%.o:$(IMPLOT_DIR)/%.cpp
+$(BUILD_DIR)/%.o:$(IMPLOT_DIR)/%.cpp
+	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-%.o:$(IMGUIFILEDIALOG_DIR)/%.cpp
+$(BUILD_DIR)/%.o:$(IMGUIFILEDIALOG_DIR)/%.cpp
+	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 all: $(EXE)
+	@mkdir -p $(BIN_DIR)
+	@cp $(EXE) $(BIN_DIR)/$(basename $(notdir $(EXE)))
 	@echo Build complete for $(ECHO_MESSAGE)
 
 $(EXE): $(OBJS)

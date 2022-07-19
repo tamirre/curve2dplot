@@ -1,4 +1,6 @@
 
+build-win32/
+build-Linux/
 src/shell.bat
 src/run.bat
 src/build.bat
