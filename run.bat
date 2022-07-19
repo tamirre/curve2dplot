@@ -1,2 +1,2 @@
 @echo off
-c:\programming\gui\build\main.exe
+c:\programming\gui\bin\main.exe

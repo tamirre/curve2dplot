@@ -14,9 +14,11 @@
 #ifdef __APPLE__
 #define GL_SILENCE_DEPRECATION
 #endif
+
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 
 #include "implot.h"
+#include "ImGuiFileDialog.h"
 
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
 // To link with VS2010-era libraries, VS2015+ requires linking with legacy_stdio_definitions.lib, which we do using this pragma.
@@ -24,6 +26,28 @@
 #if defined(_MSC_VER) && (_MSC_VER >= 1900) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
 #pragma comment(lib, "legacy_stdio_definitions")
 #endif
+
+// void drawGui()
+// { 
+//   // open Dialog Simple
+//   if (ImGui::Button("Open File Dialog"))
+//     ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".cpp,.h,.hpp", ".");
+
+//   // display
+//   if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) 
+//   {
+//     // action if OK
+//     if (ImGuiFileDialog::Instance()->IsOk())
+//     {
+//       std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+//       std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+//       // action
+//     }
+    
+//     // close
+//     ImGuiFileDialog::Instance()->Close();
+//   }
+// }
 
 static void glfw_error_callback(int error, const char* description)
 {
@@ -36,7 +60,7 @@ int main(int, char**)
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
         return 1;
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "Dear ImGui GLFW+OpenGL2 example", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "XPlot", NULL, NULL);
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);
@@ -88,7 +112,7 @@ int main(int, char**)
     // Our state
     bool show_demo_window = true;
     bool show_another_window = false;
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    ImVec4 clear_color = ImVec4(0.086f, 0.086f, 0.086f, 1.00f);
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -105,10 +129,14 @@ int main(int, char**)
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        // Make docspace in main window
+        ImGui::DockSpaceOverViewport();
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
         if (show_demo_window)
+            // ImGui_Dockspace();
             ImGui::ShowDemoWindow(&show_demo_window);
-            ImPlot::ShowDemoWindow();
+            // drawGui();
+            // ImPlot::ShowDemoWindow(&show_demo_window);
 
         // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
         {
@@ -130,18 +158,40 @@ int main(int, char**)
             ImGui::Text("counter = %d", counter);
 
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+            // // open Dialog Simple
+            // if (ImGui::Button("Open File Dialog")) {
+            //     ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".cpp,.h,.hpp", ".");
+
+            //     // display
+            //     if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) 
+            //     {
+            //         // action if OK
+            //         if (ImGuiFileDialog::Instance()->IsOk())
+            //         {
+            //             std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+            //             std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+            //             // action
+            //         }
+
+            //         // close
+            //         ImGuiFileDialog::Instance()->Close();
+            //     }
+            // }
+            
             ImGui::End();
         }
 
         // 3. Show another simple window.
-        if (show_another_window)
-        {
-            ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-            ImGui::Text("Hello from another window!");
-            if (ImGui::Button("Close Me"))
-                show_another_window = false;
-            ImGui::End();
-        }
+        // if (show_another_window)
+        // {
+        //     ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+        //     ImGui::Text("Hello from another window!");
+        //     if (ImGui::Button("Close Me"))
+        //         show_another_window = false;
+        //     ImGui::End();
+        // }
+        
         // Rendering
         ImGui::Render();
         int display_w, display_h;
