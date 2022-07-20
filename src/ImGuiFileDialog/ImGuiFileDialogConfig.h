@@ -2,6 +2,8 @@
 
 // uncomment and modify defines under for customize ImGuiFileDialog
 
+#define USE_IMGUI_TABLES
+
 //this options need c++17
 //#define USE_STD_FILESYSTEM
 

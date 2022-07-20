@@ -80,7 +80,7 @@ void openFileDialog(bool *p_open)
     ImVec2 maxSize = ImVec2(800.0, 400.0);  // The full display area
     ImVec2 minSize = ImVec2(400.0, 200.0); // Half the display area
 
-    ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Choose a Directory", nullptr, ".");
+    ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Choose a Directory", nullptr, ".", 0);
     // display
     if (ImGuiFileDialog::Instance()->Display("ChooseDirDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize)) 
     {
@@ -100,85 +100,24 @@ void openFileDialog(bool *p_open)
 
 void showMainMenu()
 {
-    // ImGui::NewFrame();
-    // bool open = false, save = false;
     if(ImGui::BeginMainMenuBar())
     {
         if (ImGui::BeginMenu("File"))
         {
             if (ImGui::MenuItem("Open Directory...", "CTRL+O", &show_filedialog))
             {
-                // ImGui::OpenPopup("Open Directory");
-                // openFileDialog(&show_filedialog);
+                
             }
-            if (ImGui::MenuItem("Add Directory...", NULL))
+            if (ImGui::MenuItem("Add Directory...", "CTRL+D", &show_filedialog))
             {
-
+                
             }
             
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
     }
-    // ImGuiFileDialog::Instance()->OpenDialog("ChooseDirectoryDlgKey", "Choose Directory", "*", ".");
-    // if(ImGui::BeginPopupModal("Open Directory"))
-    // {
-    //     ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Open Directory", nullptr, ".");
-    //     // display
-    //     if (ImGuiFileDialog::Instance()->Display("ChooseDirDlgKey")) 
-    //     {
-    //         // action if OK
-    //         if (ImGuiFileDialog::Instance()->IsOk())
-    //         {
-    //             std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-    //             std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
-    //             // action
-    //         }
-
-    //         // close
-    //         ImGuiFileDialog::Instance()->Close();
-    //         ImGui::EndPopup();
-    //     }
-    // }
-
-    
-    //Remember the name to ImGui::OpenPopup() and showFileDialog() must be same...
-    
-    // if(open)
-    //     ImGui::OpenPopup("Open Directory");
-
-
-    // if(save)
-    //     ImGui::OpenPopup("Add Directory");
-        
-    /* Optional third parameter. Support opening only compressed rar/zip files. 
-     * Opening any other file will show error, return false and won't close the dialog.
-     */
-    // if(file_dialog.showFileDialog("Open Directory", imgui_addons::ImGuiFileBrowser::DialogMode::SELECT, ImVec2(700, 310), ".*"))
-    
-    // if(file_dialog.showFileDialog("Open Directory", DialogMode::SELECT, ImVec2(700, 310), ".*"))
-    // {
-        
-    //     // std::cout << file_dialog.selected_fn << std::endl;      // The name of the selected file or directory in case of Select Directory dialog mode
-    //     // std::cout << file_dialog.selected_path << std::endl;    // The absolute path to the selected file
-
-    //     // char* path = new char[file_dialog.selected_path.length() + 1];
-    //     // strcpy(path, file_dialog.selected_path.c_str());
-    //     // // const char* path = "C:\\programming\\gui\\";
-    //     // // printf(typeid(file_dialog.selected_path).name());
-    //     // listFilesInDirectory(path);
-    //     // delete path;
-    // }
-    // if(file_dialog.showFileDialog("Add Directory", imgui_addons::ImGuiFileBrowser::DialogMode::SELECT, ImVec2(700, 310), ".*"))
-    // {
-    //     std::cout << file_dialog.selected_fn << std::endl;      // The name of the selected file or directory in case of Select Directory dialog mode
-    //     std::cout << file_dialog.selected_path << std::endl;    // The absolute path to the selected file
-    //     std::cout << file_dialog.ext << std::endl;              // Access ext separately (For SAVE mode)
-    //     //Do writing of files based on extension here
-    // }
 }
-
-
 
 int main(int, char**)
 {
@@ -261,7 +200,6 @@ int main(int, char**)
         // Show menu bar for opening/adding a directory
         showMainMenu();
 
-
         // Make docspace in main window
         ImGui::DockSpaceOverViewport();
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
@@ -274,29 +212,6 @@ int main(int, char**)
         // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
         {
             ImGui::Begin("Navigation");                          // Create a window called "Hello, world!" and append into it.
-
-
-            // ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Open Directory", nullptr, ".");
-            // if(ImGui::Button("Open Directory"))
-            // {
-
-            //     // display
-            //     if (ImGuiFileDialog::Instance()->Display("ChooseDirDlgKey")) 
-            //     {
-            //         // action if OK
-            //         if (ImGuiFileDialog::Instance()->IsOk())
-            //         {
-            //             std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-            //             std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
-            //             // action
-            //         }
-
-            //         // close
-            //         // ImGuiFileDialog::Instance()->Close();
-            //         // ImGui::EndPopup();
-            //     }
-            // }
-            
             
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
