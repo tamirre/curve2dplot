@@ -10,6 +10,7 @@
 // HACK: so that stdint.h does not get included twice...
 #define _MSC_STDINT_H_
 
+#include "math.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl2.h"
@@ -121,6 +122,13 @@ void showMainMenu()
 
 int main(int, char**)
 {
+    const int tmp_size = 1000001;
+    static float xs1[tmp_size], ys1[tmp_size];
+    for (int i = 0; i < tmp_size; ++i) {
+        xs1[i] = i * 1.0f/(tmp_size-1);
+        ys1[i] = 0.5f + 0.5f * sinf(50 * (xs1[i] + 0.0 / 10));
+    }
+ 
     // Setup window
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
@@ -207,7 +215,14 @@ int main(int, char**)
         if (show_demo_window)
         {
             ImGui::ShowDemoWindow(&show_demo_window);
-            ImPlot::ShowDemoWindow(&show_demo_window);    
+            // ImPlot::ShowDemoWindow(&show_demo_window);
+            if (ImPlot::BeginPlot("Line Plots")) {
+                ImPlot::SetupAxes("x","y");
+                ImPlot::PlotLine("f(x)", xs1, ys1, tmp_size);
+                // ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
+                // ImPlot::PlotLine("g(x)", xs2, ys2, 20,ImPlotLineFlags_Segments);
+                ImPlot::EndPlot();
+            }
         }
         // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
         {
@@ -217,7 +232,7 @@ int main(int, char**)
 
 
             static ImGuiTextFilter filter;
-            filter.Draw("Search");
+            filter.Draw();
             ImGui::SameLine();
             HelpMarker(
                 "Input regular expression search string here."
@@ -246,6 +261,7 @@ int main(int, char**)
                 ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 18.0f);
                 ImGui::TableHeadersRow();
 
+                
                 // Simple storage to output a dummy file-system.
                 struct MyTreeNode
                 {
@@ -254,17 +270,18 @@ int main(int, char**)
                     int             Size;
                     int             ChildIdx;
                     int             ChildCount;
+                    bool            checkboxState;
 
                     // Helper class to easy setup a text filter.
                     // You may want to implement a more feature-full filtering scheme in your own application.
 
-                    static void DisplayNode(const MyTreeNode* node, const MyTreeNode* all_nodes)
+                    static void DisplayNode(MyTreeNode* node, MyTreeNode* all_nodes)
                     {
-                        ImGui::TableNextRow();
-                        ImGui::TableNextColumn();
                         const bool is_folder = (node->ChildCount > 0);
                         if (is_folder)
                         {
+                            ImGui::TableNextRow();
+                            ImGui::TableNextColumn();
                             bool open = ImGui::TreeNodeEx(node->Name, ImGuiTreeNodeFlags_SpanFullWidth |
                                                                       ImGuiTreeNodeFlags_DefaultOpen);
                             ImGui::TableNextColumn();
@@ -281,54 +298,65 @@ int main(int, char**)
                             }
                         }
                         else
-                        {
+                        {                        
                             if(filter.PassFilter(node->Name))
                             {
+                                ImGui::TableNextRow();
+                                ImGui::TableNextColumn();
+                                
+                                int nodeIdx = (int)(node - all_nodes);
+                                std::string strNodeIdx = std::string("##") + std::to_string(nodeIdx);
+
+                                ImGui::Checkbox(strNodeIdx.c_str(), &node->checkboxState);
+                                ImGui::SameLine(1.0f, ImGui::GetCursorPosX());
+
                                 ImGui::TreeNodeEx(node->Name, ImGuiTreeNodeFlags_Leaf |
-                                                              ImGuiTreeNodeFlags_Bullet |
                                                               ImGuiTreeNodeFlags_NoTreePushOnOpen |
                                                               ImGuiTreeNodeFlags_SpanFullWidth);
+
                                 ImGui::TableNextColumn();
                                 ImGui::Text("%d", node->Size);
                                 ImGui::TableNextColumn();
                                 ImGui::TextUnformatted(node->Type);
+                            } else {
+                                node->checkboxState = false;
                             }
                         }
                     }
                 };
-                int n = 3;
-                static const MyTreeNode nodes[] =
+
+                static MyTreeNode nodes[] =
                 {
-                    { "Jobs",                         "Folder",       -1,       1, n    }, // 0
-                    { "Music",                        "Folder",       -1,       5, 2    }, // 1
-                    { "Stuff",                        "Folder",       -1,       7, 3    }, // 1
-                    { "Textures",                     "Folder",       -1,      10, 20    }, // 2
-                    { "desktop.ini",                  "System file",  1024,    -1,-1    }, // 3
-                    { "File1_a.wav",                  "Audio file",   123000,  -1,-1    }, // 4
-                    { "File1_b.wav",                  "Audio file",   456000,  -1,-1    }, // 5
-                    { "Something.txt",                "Text file",    420,     -1,-1    }, // 5                        
-                    { "Something.txt",                "Text file",    420,     -1,-1    }, // 5                        
-                    { "Something.txt",                "Text file",    420,     -1,-1    }, // 5                        
-                    { "Image001.png",                 "Image file",   203128,  -1,-1    }, // 6
-                    { "Copy of Image001.png",         "Image file",   203256,  -1,-1    }, // 7
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                    { "Jobs",                         "Folder",       -1,       1, 3 , false   }, // 0
+                    { "Music",                        "Folder",       -1,       5, 2 , false   }, // 1
+                    { "Stuff",                        "Folder",       -1,       7, 3 , false   }, // 1
+                    { "Textures",                     "Folder",       -1,      10, 20, false   }, // 2
+                    { "desktop.ini",                  "System file",  1024,    -1,-1 , false   }, // 3
+                    { "File1_a.wav",                  "Audio file",   123000,  -1,-1 , false   }, // 4
+                    { "File1_b.wav",                  "Audio file",   456000,  -1,-1 , false   }, // 5
+                    { "Something.txt",                "Text file",    420,     -1,-1 , false   }, // 5                        
+                    { "Something.txt",                "Text file",    420,     -1,-1 , false   }, // 5                        
+                    { "Something.txt",                "Text file",    420,     -1,-1 , false   }, // 5                        
+                    { "Image001.png",                 "Image file",   203128,  -1,-1 , false   }, // 6
+                    { "Copy of Image001.png",         "Image file",   203256,  -1,-1 , false   }, // 7
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }  // 8
                 };
 
                 MyTreeNode::DisplayNode(&nodes[0], nodes);
@@ -367,6 +395,7 @@ int main(int, char**)
         }
 
         glfwSwapBuffers(window);
+        // Sleep(100);
     }
 
     // Cleanup

@@ -285,9 +285,10 @@ void Demo_Config() {
 //-----------------------------------------------------------------------------
 
 void Demo_LinePlots() {
-    static float xs1[1001], ys1[1001];
-    for (int i = 0; i < 1001; ++i) {
-        xs1[i] = i * 0.001f;
+    const int size = 11;
+    static float xs1[size], ys1[size];
+    for (int i = 0; i < size; ++i) {
+        xs1[i] = i * 1.0f/(size-1);
         ys1[i] = 0.5f + 0.5f * sinf(50 * (xs1[i] + (float)ImGui::GetTime() / 10));
     }
     static double xs2[20], ys2[20];
@@ -297,7 +298,7 @@ void Demo_LinePlots() {
     }
     if (ImPlot::BeginPlot("Line Plots")) {
         ImPlot::SetupAxes("x","y");
-        ImPlot::PlotLine("f(x)", xs1, ys1, 1001);
+        ImPlot::PlotLine("f(x)", xs1, ys1, size);
         ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
         ImPlot::PlotLine("g(x)", xs2, ys2, 20,ImPlotLineFlags_Segments);
         ImPlot::EndPlot();

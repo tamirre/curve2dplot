@@ -1,0 +1,14 @@
+@echo off
+
+set OUT_DIR=..\build-win32
+set BIN_DIR=..\bin
+set OUT_EXE=main
+rem 
+set INCLUDES=/ID:\programming\gui\src\imgui-docking /ID:\programming\gui\src\ImGuiFileDialog\dirent /ID:\programming\gui\src\implot /ID:\programming\gui\src\imgui-docking\backends /ID:\programming\gui\src\lib\glfw\include /ID:\programming\gui\src\ImGuiFileDialog
+set LIBS=/LIBPATH:D:\programming\gui\src\lib\glfw\lib-vc2019 glfw3.lib opengl32.lib gdi32.lib shell32.lib
+set SOURCES=D:\programming\gui\src\main.cpp D:\programming\gui\src\imgui-docking\backends\imgui_impl_glfw.cpp D:\programming\gui\src\imgui-docking\backends\imgui_impl_opengl2.cpp D:\programming\gui\src\imgui-docking\imgui*.cpp D:\programming\gui\src\implot\implot*.cpp D:\programming\gui\src\ImGuiFileDialog\ImGuiFileDialog.cpp
+IF NOT EXIST %OUT_DIR% mkdir %OUT_DIR%
+cl /nologo /Zi /O2 /Ob3 /GL /LTCG /MD /EHsc %INCLUDES% %SOURCES% /Fe%OUT_DIR%/%OUT_EXE%.exe /Fo%OUT_DIR%/ /link %LIBS%
+
+IF NOT EXIST %BIN_DIR% mkdir %BIN_DIR%
+@copy %OUT_DIR%\%OUT_EXE%.exe %BIN_DIR%\%OUT_EXE%.exe
