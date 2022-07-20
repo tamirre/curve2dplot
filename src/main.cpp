@@ -14,11 +14,17 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl2.h"
 
+#include "dirent.h"
 #include "implot.h"
-#include "ImGuiFileBrowser.h"
-// #include "ImGuiFileDialog.h"
+// #include "ImGuiFileBrowser.h"
+#include "ImGuiFileDialog.h"
 
 #include <stdio.h>
+// For testing
+#include <iostream>
+using namespace std;
+static bool show_filedialog = false;
+
 #ifdef __APPLE__
 #define GL_SILENCE_DEPRECATION
 #endif
@@ -32,32 +38,147 @@
 #pragma comment(lib, "legacy_stdio_definitions")
 #endif
 
-// void drawGui()
-// { 
-//   // open Dialog Simple
-//   if (ImGui::Button("Open File Dialog"))
-//     ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".cpp,.h,.hpp", ".");
-
-//   // display
-//   if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) 
-//   {
-//     // action if OK
-//     if (ImGuiFileDialog::Instance()->IsOk())
-//     {
-//       std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-//       std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
-//       // action
-//     }
-    
-//     // close
-//     ImGuiFileDialog::Instance()->Close();
-//   }
-// }
+// Helper to display a little (?) mark which shows a tooltip when hovered.
+// In your own code you may want to display an actual icon if you are using a merged icon fonts (see docs/FONTS.md)
+static void HelpMarker(const char* desc)
+{
+    ImGui::TextDisabled("(?)");
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(desc);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+}
 
 static void glfw_error_callback(int error, const char* description)
 {
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
+
+void listFilesInDirectory(char* path)
+{
+    DIR *dir;
+    struct dirent *ent;
+    if ((dir = opendir(path)) != NULL) {
+    /* print all the files and directories within directory */
+    while ((ent = readdir(dir)) != NULL) {
+        printf("%s\n", ent->d_name);
+    }
+    closedir(dir);
+    } else {
+        /* could not open directory */
+        // perror ("");
+        // return EXIT_FAILURE;
+    }
+}
+
+void openFileDialog(bool *p_open)
+{
+    ImVec2 maxSize = ImVec2(800.0, 400.0);  // The full display area
+    ImVec2 minSize = ImVec2(400.0, 200.0); // Half the display area
+
+    ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Choose a Directory", nullptr, ".");
+    // display
+    if (ImGuiFileDialog::Instance()->Display("ChooseDirDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize)) 
+    {
+        // action if OK
+        if (ImGuiFileDialog::Instance()->IsOk())
+        {
+            std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+            std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+            // action
+        }
+
+        // close
+        ImGuiFileDialog::Instance()->Close();
+        *p_open=false;
+    }
+}
+
+void showMainMenu()
+{
+    // ImGui::NewFrame();
+    // bool open = false, save = false;
+    if(ImGui::BeginMainMenuBar())
+    {
+        if (ImGui::BeginMenu("File"))
+        {
+            if (ImGui::MenuItem("Open Directory...", "CTRL+O", &show_filedialog))
+            {
+                // ImGui::OpenPopup("Open Directory");
+                // openFileDialog(&show_filedialog);
+            }
+            if (ImGui::MenuItem("Add Directory...", NULL))
+            {
+
+            }
+            
+            ImGui::EndMenu();
+        }
+        ImGui::EndMainMenuBar();
+    }
+    // ImGuiFileDialog::Instance()->OpenDialog("ChooseDirectoryDlgKey", "Choose Directory", "*", ".");
+    // if(ImGui::BeginPopupModal("Open Directory"))
+    // {
+    //     ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Open Directory", nullptr, ".");
+    //     // display
+    //     if (ImGuiFileDialog::Instance()->Display("ChooseDirDlgKey")) 
+    //     {
+    //         // action if OK
+    //         if (ImGuiFileDialog::Instance()->IsOk())
+    //         {
+    //             std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+    //             std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+    //             // action
+    //         }
+
+    //         // close
+    //         ImGuiFileDialog::Instance()->Close();
+    //         ImGui::EndPopup();
+    //     }
+    // }
+
+    
+    //Remember the name to ImGui::OpenPopup() and showFileDialog() must be same...
+    
+    // if(open)
+    //     ImGui::OpenPopup("Open Directory");
+
+
+    // if(save)
+    //     ImGui::OpenPopup("Add Directory");
+        
+    /* Optional third parameter. Support opening only compressed rar/zip files. 
+     * Opening any other file will show error, return false and won't close the dialog.
+     */
+    // if(file_dialog.showFileDialog("Open Directory", imgui_addons::ImGuiFileBrowser::DialogMode::SELECT, ImVec2(700, 310), ".*"))
+    
+    // if(file_dialog.showFileDialog("Open Directory", DialogMode::SELECT, ImVec2(700, 310), ".*"))
+    // {
+        
+    //     // std::cout << file_dialog.selected_fn << std::endl;      // The name of the selected file or directory in case of Select Directory dialog mode
+    //     // std::cout << file_dialog.selected_path << std::endl;    // The absolute path to the selected file
+
+    //     // char* path = new char[file_dialog.selected_path.length() + 1];
+    //     // strcpy(path, file_dialog.selected_path.c_str());
+    //     // // const char* path = "C:\\programming\\gui\\";
+    //     // // printf(typeid(file_dialog.selected_path).name());
+    //     // listFilesInDirectory(path);
+    //     // delete path;
+    // }
+    // if(file_dialog.showFileDialog("Add Directory", imgui_addons::ImGuiFileBrowser::DialogMode::SELECT, ImVec2(700, 310), ".*"))
+    // {
+    //     std::cout << file_dialog.selected_fn << std::endl;      // The name of the selected file or directory in case of Select Directory dialog mode
+    //     std::cout << file_dialog.selected_path << std::endl;    // The absolute path to the selected file
+    //     std::cout << file_dialog.ext << std::endl;              // Access ext separately (For SAVE mode)
+    //     //Do writing of files based on extension here
+    // }
+}
+
+
 
 int main(int, char**)
 {
@@ -65,6 +186,7 @@ int main(int, char**)
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
         return 1;
+    
     GLFWwindow* window = glfwCreateWindow(1280, 720, "XPlot", NULL, NULL);
     if (window == NULL)
         return 1;
@@ -75,6 +197,7 @@ int main(int, char**)
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImPlot::CreateContext();
+
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
@@ -113,12 +236,13 @@ int main(int, char**)
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
     //IM_ASSERT(font != NULL);
-
+ 
     // Our state
     bool show_demo_window = true;
-    bool show_another_window = false;
-    ImVec4 clear_color = ImVec4(0.086f, 0.086f, 0.086f, 1.00f);
 
+    // bool show_another_window = false;
+    ImVec4 clear_color = ImVec4(0.086f, 0.086f, 0.086f, 1.00f);
+    
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
@@ -128,48 +252,36 @@ int main(int, char**)
         // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
         glfwPollEvents();
-
+    
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL2_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        // Show menu bar for opening/adding a directory
+        showMainMenu();
+
+
         // Make docspace in main window
         ImGui::DockSpaceOverViewport();
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
+        if (show_filedialog) openFileDialog(&show_filedialog);
         if (show_demo_window)
-            // ImGui_Dockspace();
+        {
             ImGui::ShowDemoWindow(&show_demo_window);
-            // drawGui();
-            // ImPlot::ShowDemoWindow(&show_demo_window);
-
+            ImPlot::ShowDemoWindow(&show_demo_window);    
+        }
         // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
         {
-            static float f = 0.0f;
-            static int counter = 0;
+            ImGui::Begin("Navigation");                          // Create a window called "Hello, world!" and append into it.
 
-            ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
 
-            ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-            ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-            ImGui::Checkbox("Another Window", &show_another_window);
-
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-            ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-            if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-                counter++;
-            ImGui::SameLine();
-            ImGui::Text("counter = %d", counter);
-
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-
-            // // open Dialog Simple
-            // if (ImGui::Button("Open File Dialog")) {
-            //     ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".cpp,.h,.hpp", ".");
+            // ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Open Directory", nullptr, ".");
+            // if(ImGui::Button("Open Directory"))
+            // {
 
             //     // display
-            //     if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) 
+            //     if (ImGuiFileDialog::Instance()->Display("ChooseDirDlgKey")) 
             //     {
             //         // action if OK
             //         if (ImGuiFileDialog::Instance()->IsOk())
@@ -180,22 +292,137 @@ int main(int, char**)
             //         }
 
             //         // close
-            //         ImGuiFileDialog::Instance()->Close();
+            //         // ImGuiFileDialog::Instance()->Close();
+            //         // ImGui::EndPopup();
             //     }
             // }
             
+            
+            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+
+            static ImGuiTextFilter filter;
+            filter.Draw("Search");
+            ImGui::SameLine();
+            HelpMarker(
+                "Input regular expression search string here."
+            );
+            ImGui::SameLine();
+            if(ImGui::Button("Plot"))
+            {
+                // TBI
+            }
+            
+            const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
+            const float TEXT_BASE_HEIGHT = ImGui::CalcTextSize("A").y;
+            static ImGuiTableFlags flags = ImGuiTableFlags_BordersV |
+                                           ImGuiTableFlags_BordersOuterH |
+                                           ImGuiTableFlags_Resizable |
+                                           ImGuiTableFlags_RowBg |
+                                           ImGuiTableFlags_NoBordersInBody;
+
+            ImVec2 outer_size = ImVec2(0.0f, TEXT_BASE_HEIGHT * 5);
+            if (ImGui::BeginTable("table_scrolly", 3, flags, outer_size))
+            // if (ImGui::BeginTable("table_scrolly", 3, flags))
+            {
+                // The first column will use the default _WidthStretch when ScrollX is Off and _WidthFixed when ScrollX is On
+                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide);
+                ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 12.0f);
+                ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 18.0f);
+                ImGui::TableHeadersRow();
+
+                // Simple storage to output a dummy file-system.
+                struct MyTreeNode
+                {
+                    const char*     Name;
+                    const char*     Type;
+                    int             Size;
+                    int             ChildIdx;
+                    int             ChildCount;
+
+                    // Helper class to easy setup a text filter.
+                    // You may want to implement a more feature-full filtering scheme in your own application.
+
+                    static void DisplayNode(const MyTreeNode* node, const MyTreeNode* all_nodes)
+                    {
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        const bool is_folder = (node->ChildCount > 0);
+                        if (is_folder)
+                        {
+                            bool open = ImGui::TreeNodeEx(node->Name, ImGuiTreeNodeFlags_SpanFullWidth |
+                                                                      ImGuiTreeNodeFlags_DefaultOpen);
+                            ImGui::TableNextColumn();
+                            ImGui::TextDisabled("--");
+                            ImGui::TableNextColumn();
+                            ImGui::TextUnformatted(node->Type);
+                            if (open)
+                            {
+                                for (int child_n = 0; child_n < node->ChildCount; child_n++)
+                                {
+                                    DisplayNode(&all_nodes[node->ChildIdx + child_n], all_nodes);
+                                }
+                                ImGui::TreePop();
+                            }
+                        }
+                        else
+                        {
+                            if(filter.PassFilter(node->Name))
+                            {
+                                ImGui::TreeNodeEx(node->Name, ImGuiTreeNodeFlags_Leaf |
+                                                              ImGuiTreeNodeFlags_Bullet |
+                                                              ImGuiTreeNodeFlags_NoTreePushOnOpen |
+                                                              ImGuiTreeNodeFlags_SpanFullWidth);
+                                ImGui::TableNextColumn();
+                                ImGui::Text("%d", node->Size);
+                                ImGui::TableNextColumn();
+                                ImGui::TextUnformatted(node->Type);
+                            }
+                        }
+                    }
+                };
+                int n = 3;
+                static const MyTreeNode nodes[] =
+                {
+                    { "Jobs",                         "Folder",       -1,       1, n    }, // 0
+                    { "Music",                        "Folder",       -1,       5, 2    }, // 1
+                    { "Stuff",                        "Folder",       -1,       7, 3    }, // 1
+                    { "Textures",                     "Folder",       -1,      10, 20    }, // 2
+                    { "desktop.ini",                  "System file",  1024,    -1,-1    }, // 3
+                    { "File1_a.wav",                  "Audio file",   123000,  -1,-1    }, // 4
+                    { "File1_b.wav",                  "Audio file",   456000,  -1,-1    }, // 5
+                    { "Something.txt",                "Text file",    420,     -1,-1    }, // 5                        
+                    { "Something.txt",                "Text file",    420,     -1,-1    }, // 5                        
+                    { "Something.txt",                "Text file",    420,     -1,-1    }, // 5                        
+                    { "Image001.png",                 "Image file",   203128,  -1,-1    }, // 6
+                    { "Copy of Image001.png",         "Image file",   203256,  -1,-1    }, // 7
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1    }, // 8
+                };
+
+                MyTreeNode::DisplayNode(&nodes[0], nodes);
+
+                ImGui::EndTable();
+            }
+
             ImGui::End();
         }
-
-        // 3. Show another simple window.
-        // if (show_another_window)
-        // {
-        //     ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-        //     ImGui::Text("Hello from another window!");
-        //     if (ImGui::Button("Close Me"))
-        //         show_another_window = false;
-        //     ImGui::End();
-        // }
         
         // Rendering
         ImGui::Render();
