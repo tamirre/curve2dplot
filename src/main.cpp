@@ -23,6 +23,8 @@
 #include <stdio.h>
 // For testing
 #include <iostream>
+#include <cstdlib>
+#include<time.h>
 using namespace std;
 static bool show_filedialog = false;
 
@@ -120,14 +122,24 @@ void showMainMenu()
     }
 }
 
+struct Curve
+{
+    int size = 101;
+    float x[101];
+    float y[101];
+};
+
+// void appendPlotList()
+// {
+
+// }
+
 int main(int, char**)
 {
-    const int tmp_size = 1001;
-    static float xs1[tmp_size], ys1[tmp_size];
-    for (int i = 0; i < tmp_size; ++i) {
-        xs1[i] = i * 1.0f/(tmp_size-1);
-        ys1[i] = 0.5f + 0.5f * sinf(50 * (xs1[i] + 0.0 / 10));
-    }
+
+  
+    // for(int i = 0; i < 4; i++)
+        // cout <<  << " ";
  
     // Setup window
     glfwSetErrorCallback(glfw_error_callback);
@@ -187,7 +199,7 @@ int main(int, char**)
     // Our state
     bool show_demo_window = true;
     bool plotFlag = false;
-
+    static ImVector<Curve> plotList;
     // bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.086f, 0.086f, 0.086f, 1.00f);
     
@@ -216,10 +228,10 @@ int main(int, char**)
         if (show_demo_window)
         {
             ImGui::ShowDemoWindow(&show_demo_window);
-            // ImPlot::ShowDemoWindow(&show_demo_window);
+            ImPlot::ShowDemoWindow(&show_demo_window);
 
         }
-        // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
+        // NAVIGATION WINDOW SECTION
         {
             ImGui::Begin("Navigation");                          // Create a window called "Hello, world!" and append into it.
             
@@ -247,23 +259,23 @@ int main(int, char**)
                 static ImGuiTableFlags flags = ImGuiTableFlags_BordersV |
                                                ImGuiTableFlags_BordersOuterH |
                                                ImGuiTableFlags_Resizable |
+                                               // TODO: Reordering not working with row spacing yet
+                                               // ImGuiTableFlags_Reorderable | 
                                                ImGuiTableFlags_RowBg |
                                                ImGuiTableFlags_NoBordersInBody;
 
                 ImVec2 outer_size = ImVec2(0.0f, TEXT_BASE_HEIGHT * 5);
-                if (ImGui::BeginTable("table_scrolly", 3, flags, outer_size))
+                if (ImGui::BeginTable("table_scrolly", 2, flags, outer_size))
                 {
                     // The first column will use the default _WidthStretch when ScrollX is Off and _WidthFixed when ScrollX is On
                     ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide);
                     ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 12.0f);
-                    ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 18.0f);
                     ImGui::TableHeadersRow();
 
                     // Simple storage to output a dummy file-system.
                     struct MyTreeNode
                     {
                         const char*     Name;
-                        const char*     Type;
                         int             Size;
                         int             ChildIdx;
                         int             ChildCount;
@@ -283,8 +295,8 @@ int main(int, char**)
                                                                           ImGuiTreeNodeFlags_DefaultOpen);
                                 ImGui::TableNextColumn();
                                 ImGui::TextDisabled("--");
-                                ImGui::TableNextColumn();
-                                ImGui::TextUnformatted(node->Type);
+                                // ImGui::TableNextColumn();
+                                // ImGui::TextUnformatted(node->Type);
                                 if (open)
                                 {
                                     for (int child_n = 0; child_n < node->ChildCount; child_n++)
@@ -313,8 +325,8 @@ int main(int, char**)
 
                                     ImGui::TableNextColumn();
                                     ImGui::Text("%d", node->Size);
-                                    ImGui::TableNextColumn();
-                                    ImGui::TextUnformatted(node->Type);
+                                    // ImGui::TableNextColumn();
+                                    // ImGui::TextUnformatted(node->Type);
                                 } else {
                                     node->checkboxState = false;
                                 }
@@ -324,36 +336,36 @@ int main(int, char**)
 
                     static MyTreeNode nodes[] =
                     {
-                        { "Jobs",                         "Folder",       -1,       1, 3 , false   }, // 0
-                        { "Music",                        "Folder",       -1,       5, 2 , false   }, // 1
-                        { "Stuff",                        "Folder",       -1,       7, 3 , false   }, // 1
-                        { "Textures",                     "Folder",       -1,      10, 20, false   }, // 2
-                        { "desktop.ini",                  "System file",  1024,    -1,-1 , false   }, // 3
-                        { "File1_a.wav",                  "Audio file",   123000,  -1,-1 , false   }, // 4
-                        { "File1_b.wav",                  "Audio file",   456000,  -1,-1 , false   }, // 5
-                        { "Something.txt",                "Text file",    420,     -1,-1 , false   }, // 5                        
-                        { "Something.txt",                "Text file",    420,     -1,-1 , false   }, // 5                        
-                        { "Something.txt",                "Text file",    420,     -1,-1 , false   }, // 5                        
-                        { "Image001.png",                 "Image file",   203128,  -1,-1 , false   }, // 6
-                        { "Copy of Image001.png",         "Image file",   203256,  -1,-1 , false   }, // 7
-                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }  // 8
+                        { "Jobs",                           -1,       1, 3 , false   }, // 0
+                        { "Music",                          -1,       5, 2 , false   }, // 1
+                        { "Stuff",                          -1,       7, 3 , false   }, // 1
+                        { "Textures",                       -1,      10, 20, false   }, // 2
+                        { "desktop.ini",                    1024,    -1,-1 , false   }, // 3
+                        { "File1_a.wav",                    123000,  -1,-1 , false   }, // 4
+                        { "File1_b.wav",                    456000,  -1,-1 , false   }, // 5
+                        { "Something.txt",                  420,     -1,-1 , false   }, // 5                        
+                        { "Something.txt",                  420,     -1,-1 , false   }, // 5                        
+                        { "Something.txt",                  420,     -1,-1 , false   }, // 5                        
+                        { "Image001.png",                   203128,  -1,-1 , false   }, // 6
+                        { "Copy of Image001.png",           203256,  -1,-1 , false   }, // 7
+                        { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }  // 8
                     };
 
                     MyTreeNode::DisplayNode(&nodes[0], nodes);
@@ -366,20 +378,109 @@ int main(int, char**)
             ImGui::End();
         }
 
+        // PLOT WINDOW SECTION
         {
             ImGui::Begin("Plot");
-            if (plotFlag)
+            
+            static ImVector<int> active_tabs;
+            static int next_tab_id = 0;
+            // if (next_tab_id == 0) // Initialize with some default tabs
+            //     for (int i = 0; i < 3; i++)
+            //         active_tabs.push_back(next_tab_id++);
+
+            // TabItemButton() and Leading/Trailing flags are distinct features which we will demo together.
+            // (It is possible to submit regular tabs with Leading/Trailing flags, or TabItemButton tabs without Leading/Trailing flags...
+            // but they tend to make more sense together)
+            // static bool show_leading_button = true;
+            static bool show_trailing_button = true;
+            // ImGui::Checkbox("Show Leading TabItemButton()", &show_leading_button);
+            // ImGui::Checkbox("Show Trailing TabItemButton()", &show_trailing_button);
+
+            // Expose some other flags which are useful to showcase how they interact with Leading/Trailing tabs
+            static ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_AutoSelectNewTabs |
+                                                    ImGuiTabBarFlags_Reorderable |
+                                                    ImGuiTabBarFlags_TabListPopupButton |
+                                                    ImGuiTabBarFlags_FittingPolicyResizeDown;
+            // ImGui::CheckboxFlags("ImGuiTabBarFlags_TabListPopupButton", &tab_bar_flags, ImGuiTabBarFlags_TabListPopupButton);
+            // if (ImGui::CheckboxFlags("ImGuiTabBarFlags_FittingPolicyResizeDown", &tab_bar_flags, ImGuiTabBarFlags_FittingPolicyResizeDown))
+            //     tab_bar_flags &= ~(ImGuiTabBarFlags_FittingPolicyMask_ ^ ImGuiTabBarFlags_FittingPolicyResizeDown);
+            // if (ImGui::CheckboxFlags("ImGuiTabBarFlags_FittingPolicyScroll", &tab_bar_flags, ImGuiTabBarFlags_FittingPolicyScroll))
+                // tab_bar_flags &= ~(ImGuiTabBarFlags_FittingPolicyMask_ ^ ImGuiTabBarFlags_FittingPolicyScroll);
+
+            if (ImGui::BeginTabBar("MyTabBar", tab_bar_flags))
             {
-                if(ImPlot::BeginPlot("Line Plots"))
+                // Demo a Leading TabItemButton(): click the "?" button to open a menu
+                // if (show_leading_button)
+                //     if (ImGui::TabItemButton("?", ImGuiTabItemFlags_Leading | ImGuiTabItemFlags_NoTooltip))
+                //         ImGui::OpenPopup("MyHelpMenu");
+                // if (ImGui::BeginPopup("MyHelpMenu"))
+                // {
+                //     ImGui::Selectable("Hello!");
+                //     ImGui::EndPopup();
+                // }
+
+                // Demo Trailing Tabs: click the "+" button to add a new tab (in your app you may want to use a font icon instead of the "+")
+                // Note that we submit it before the regular tabs, but because of the ImGuiTabItemFlags_Trailing flag it will always appear at the end.
+                // if (show_trailing_button)
+                //     if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip))
+                //         active_tabs.push_back(next_tab_id++); // Add new tab
+                //         appendPlotList(plotList);
+
+                // Submit tab item on plot button press
+                if (plotFlag)
                 {
-                    ImPlot::SetupAxes("x","y");
-                    ImPlot::SetupFinish(); 
-                    ImPlot::PlotLine("f(x)", xs1, ys1, tmp_size);
-                    // ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
-                    // ImPlot::PlotLine("g(x)", xs2, ys2, 20,ImPlotLineFlags_Segments);
-                    ImPlot::EndPlot();
+                    Curve tmp;
+                    // srand(time(0));
+                    // static float xs1[tmp_size], ys1[tmp_size];
+                    for (int i = 0; i < tmp.size; ++i) {
+                        tmp.x[i] = i * 1.0f/(tmp.size-1);
+                        tmp.y[i] = next_tab_id;
+                    }
+                    plotList.push_back(tmp);
+                    active_tabs.push_back(next_tab_id++);
+                    plotFlag = false;
                 }
+                            
+                // Submit our regular tabs
+                for (int n = 0; n < active_tabs.Size; )
+                {
+                    bool open = true;
+                    char name[16];
+                    snprintf(name, IM_ARRAYSIZE(name), "%04d", active_tabs[n]);
+                    
+                    if (ImGui::BeginTabItem(name, &open, ImGuiTabItemFlags_None))
+                    {
+
+                        const ImVec2 plotSize = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
+                        if(ImPlot::BeginPlot("", plotSize))
+                        {
+                            ImPlot::SetupAxes("x","y");
+                            ImPlot::SetupFinish();
+
+                            std::string functionName = std::string("f") + std::to_string(active_tabs[n]) + std::string("(x)");
+                            ImPlot::PlotLine(functionName.c_str(), plotList[n].x, plotList[n].y, plotList[n].size);
+                            // ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
+                            // ImPlot::PlotLine("g(x)", xs2, ys2, 20,ImPlotLineFlags_Segments);
+                            ImPlot::EndPlot();
+                        }
+                         
+                        ImGui::EndTabItem();
+                    }
+
+                    if (!open)
+                    {
+                        plotList.erase(plotList.Data + n);
+                        active_tabs.erase(active_tabs.Data + n);
+                    }
+                    else
+                    {
+                        n++;
+                    }
+                }
+
+                ImGui::EndTabBar();
             }
+ 
             ImGui::End();
         }
         // Rendering
