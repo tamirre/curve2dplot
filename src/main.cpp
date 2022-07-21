@@ -61,20 +61,29 @@ static void glfw_error_callback(int error, const char* description)
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-void listFilesInDirectory(char* path)
+void listFilesInDirectory(const char* path)
 {
+    ImVector<char*> fileList;
     DIR *dir;
     struct dirent *ent;
-    if ((dir = opendir(path)) != NULL) {
-    /* print all the files and directories within directory */
-    while ((ent = readdir(dir)) != NULL) {
-        printf("%s\n", ent->d_name);
-    }
-    closedir(dir);
+    if ((dir = opendir(path)) != NULL)
+    {
+        /* print all the files and directories within directory */
+        while ((ent = readdir(dir)) != NULL)
+        {
+            fileList.push_back(ent->d_name);
+            // printf("%s\n", ent->d_name);
+        }
+        
+        closedir(dir);
     } else {
         /* could not open directory */
         // perror ("");
         // return EXIT_FAILURE;
+    }
+    for (int i = 0; i < fileList.Size; i++)
+    {
+        printf("%s\n", fileList[i]);
     }
 }
 
@@ -93,6 +102,7 @@ void openFileDialog(bool *p_open)
             std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
             std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
             // action
+            listFilesInDirectory(filePathName.c_str());
         }
 
         // close
