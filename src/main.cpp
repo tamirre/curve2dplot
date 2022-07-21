@@ -198,13 +198,19 @@ int main(int, char**)
     // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
     // - Read 'docs/FONTS.md' for more instructions and details.
     // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-    //io.Fonts->AddFontDefault();
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
-    //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
-    //IM_ASSERT(font != NULL);
+    ImFontConfig config;
+    config.OversampleH = 3;
+    config.OversampleV = 3;
+
+    io.Fonts->AddFontDefault();
+    io.Fonts->AddFontFromFileTTF("imgui-docking/misc/fonts/Roboto-Medium.ttf", 16.0f, &config);
+    io.Fonts->AddFontFromFileTTF("imgui-docking/misc/fonts/Cousine-Regular.ttf", 15.0f, &config);
+    io.Fonts->AddFontFromFileTTF("imgui-docking/misc/fonts/DroidSans.ttf", 16.0f, &config);
+    io.Fonts->AddFontFromFileTTF("imgui-docking/misc/fonts/ProggyTiny.ttf", 10.0f, &config);
+    io.Fonts->AddFontFromFileTTF("imgui-docking/misc/fonts/SourceCodePro-Regular.ttf", 16.0f, &config);
+
+    // ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
+    // IM_ASSERT(font != NULL);
  
     // Our state
     bool show_demo_window = true;
@@ -270,7 +276,7 @@ int main(int, char**)
                                                ImGuiTableFlags_BordersOuterH |
                                                ImGuiTableFlags_Resizable |
                                                // TODO: Reordering not working with row spacing yet
-                                               // ImGuiTableFlags_Reorderable | 
+                                               ImGuiTableFlags_Reorderable | 
                                                ImGuiTableFlags_RowBg |
                                                ImGuiTableFlags_NoBordersInBody;
 
@@ -327,7 +333,10 @@ int main(int, char**)
                                     std::string strNodeIdx = std::string("##") + std::to_string(nodeIdx);
 
                                     ImGui::Checkbox(strNodeIdx.c_str(), &node->checkboxState);
-                                    ImGui::SameLine(1.0f, ImGui::GetCursorPosX());
+                                    float rowSpacing = ImGui::GetCursorPosX() + 5.0f;
+                                    ImGui::SameLine();
+                                    ImGui::SetCursorPosX(rowSpacing);
+                                    // ImGui::SameLine(1.0f, ImGui::GetCursorPosX());
 
                                     ImGui::TreeNodeEx(node->Name, ImGuiTreeNodeFlags_Leaf |
                                                                   ImGuiTreeNodeFlags_NoTreePushOnOpen |
