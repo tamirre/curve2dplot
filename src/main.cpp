@@ -122,7 +122,7 @@ void showMainMenu()
 
 int main(int, char**)
 {
-    const int tmp_size = 1000001;
+    const int tmp_size = 1001;
     static float xs1[tmp_size], ys1[tmp_size];
     for (int i = 0; i < tmp_size; ++i) {
         xs1[i] = i * 1.0f/(tmp_size-1);
@@ -186,6 +186,7 @@ int main(int, char**)
  
     // Our state
     bool show_demo_window = true;
+    bool plotFlag = false;
 
     // bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.086f, 0.086f, 0.086f, 1.00f);
@@ -216,13 +217,7 @@ int main(int, char**)
         {
             ImGui::ShowDemoWindow(&show_demo_window);
             // ImPlot::ShowDemoWindow(&show_demo_window);
-            if (ImPlot::BeginPlot("Line Plots")) {
-                ImPlot::SetupAxes("x","y");
-                ImPlot::PlotLine("f(x)", xs1, ys1, tmp_size);
-                // ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
-                // ImPlot::PlotLine("g(x)", xs2, ys2, 20,ImPlotLineFlags_Segments);
-                ImPlot::EndPlot();
-            }
+
         }
         // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
         {
@@ -230,9 +225,8 @@ int main(int, char**)
             
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
-
             static ImGuiTextFilter filter;
-            filter.Draw();
+            filter.Draw("Search");
             ImGui::SameLine();
             HelpMarker(
                 "Input regular expression search string here."
@@ -240,133 +234,154 @@ int main(int, char**)
             ImGui::SameLine();
             if(ImGui::Button("Plot"))
             {
-                // TBI
+                plotFlag = true;
             }
-            
-            const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
-            const float TEXT_BASE_HEIGHT = ImGui::CalcTextSize("A").y;
-            static ImGuiTableFlags flags = ImGuiTableFlags_BordersV |
-                                           ImGuiTableFlags_BordersOuterH |
-                                           ImGuiTableFlags_Resizable |
-                                           ImGuiTableFlags_RowBg |
-                                           ImGuiTableFlags_NoBordersInBody;
 
-            ImVec2 outer_size = ImVec2(0.0f, TEXT_BASE_HEIGHT * 5);
-            if (ImGui::BeginTable("table_scrolly", 3, flags, outer_size))
-            // if (ImGui::BeginTable("table_scrolly", 3, flags))
             {
-                // The first column will use the default _WidthStretch when ScrollX is Off and _WidthFixed when ScrollX is On
-                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide);
-                ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 12.0f);
-                ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 18.0f);
-                ImGui::TableHeadersRow();
-
+                ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
+                // NOTE(Tamir:) Create child such that the scroll bar is only scrolling the file browser, not the entire window
+                ImGui::BeginChild("ChildBelow", ImVec2(ImGui::GetContentRegionAvail().x,ImGui::GetContentRegionAvail().y), false, window_flags);
                 
-                // Simple storage to output a dummy file-system.
-                struct MyTreeNode
+                const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
+                const float TEXT_BASE_HEIGHT = ImGui::CalcTextSize("A").y;
+                static ImGuiTableFlags flags = ImGuiTableFlags_BordersV |
+                                               ImGuiTableFlags_BordersOuterH |
+                                               ImGuiTableFlags_Resizable |
+                                               ImGuiTableFlags_RowBg |
+                                               ImGuiTableFlags_NoBordersInBody;
+
+                ImVec2 outer_size = ImVec2(0.0f, TEXT_BASE_HEIGHT * 5);
+                if (ImGui::BeginTable("table_scrolly", 3, flags, outer_size))
                 {
-                    const char*     Name;
-                    const char*     Type;
-                    int             Size;
-                    int             ChildIdx;
-                    int             ChildCount;
-                    bool            checkboxState;
+                    // The first column will use the default _WidthStretch when ScrollX is Off and _WidthFixed when ScrollX is On
+                    ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide);
+                    ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 12.0f);
+                    ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 18.0f);
+                    ImGui::TableHeadersRow();
 
-                    // Helper class to easy setup a text filter.
-                    // You may want to implement a more feature-full filtering scheme in your own application.
-
-                    static void DisplayNode(MyTreeNode* node, MyTreeNode* all_nodes)
+                    // Simple storage to output a dummy file-system.
+                    struct MyTreeNode
                     {
-                        const bool is_folder = (node->ChildCount > 0);
-                        if (is_folder)
+                        const char*     Name;
+                        const char*     Type;
+                        int             Size;
+                        int             ChildIdx;
+                        int             ChildCount;
+                        bool            checkboxState;
+
+                        // Helper class to easy setup a text filter.
+                        // You may want to implement a more feature-full filtering scheme in your own application.
+
+                        static void DisplayNode(MyTreeNode* node, MyTreeNode* all_nodes)
                         {
-                            ImGui::TableNextRow();
-                            ImGui::TableNextColumn();
-                            bool open = ImGui::TreeNodeEx(node->Name, ImGuiTreeNodeFlags_SpanFullWidth |
-                                                                      ImGuiTreeNodeFlags_DefaultOpen);
-                            ImGui::TableNextColumn();
-                            ImGui::TextDisabled("--");
-                            ImGui::TableNextColumn();
-                            ImGui::TextUnformatted(node->Type);
-                            if (open)
-                            {
-                                for (int child_n = 0; child_n < node->ChildCount; child_n++)
-                                {
-                                    DisplayNode(&all_nodes[node->ChildIdx + child_n], all_nodes);
-                                }
-                                ImGui::TreePop();
-                            }
-                        }
-                        else
-                        {                        
-                            if(filter.PassFilter(node->Name))
+                            const bool is_folder = (node->ChildCount > 0);
+                            if (is_folder)
                             {
                                 ImGui::TableNextRow();
                                 ImGui::TableNextColumn();
-                                
-                                int nodeIdx = (int)(node - all_nodes);
-                                std::string strNodeIdx = std::string("##") + std::to_string(nodeIdx);
-
-                                ImGui::Checkbox(strNodeIdx.c_str(), &node->checkboxState);
-                                ImGui::SameLine(1.0f, ImGui::GetCursorPosX());
-
-                                ImGui::TreeNodeEx(node->Name, ImGuiTreeNodeFlags_Leaf |
-                                                              ImGuiTreeNodeFlags_NoTreePushOnOpen |
-                                                              ImGuiTreeNodeFlags_SpanFullWidth);
-
+                                bool open = ImGui::TreeNodeEx(node->Name, ImGuiTreeNodeFlags_SpanFullWidth |
+                                                                          ImGuiTreeNodeFlags_DefaultOpen);
                                 ImGui::TableNextColumn();
-                                ImGui::Text("%d", node->Size);
+                                ImGui::TextDisabled("--");
                                 ImGui::TableNextColumn();
                                 ImGui::TextUnformatted(node->Type);
-                            } else {
-                                node->checkboxState = false;
+                                if (open)
+                                {
+                                    for (int child_n = 0; child_n < node->ChildCount; child_n++)
+                                    {
+                                        DisplayNode(&all_nodes[node->ChildIdx + child_n], all_nodes);
+                                    }
+                                    ImGui::TreePop();
+                                }
+                            }
+                            else
+                            {                        
+                                if(filter.PassFilter(node->Name))
+                                {
+                                    ImGui::TableNextRow();
+                                    ImGui::TableNextColumn();
+
+                                    int nodeIdx = (int)(node - all_nodes);
+                                    std::string strNodeIdx = std::string("##") + std::to_string(nodeIdx);
+
+                                    ImGui::Checkbox(strNodeIdx.c_str(), &node->checkboxState);
+                                    ImGui::SameLine(1.0f, ImGui::GetCursorPosX());
+
+                                    ImGui::TreeNodeEx(node->Name, ImGuiTreeNodeFlags_Leaf |
+                                                                  ImGuiTreeNodeFlags_NoTreePushOnOpen |
+                                                                  ImGuiTreeNodeFlags_SpanFullWidth);
+
+                                    ImGui::TableNextColumn();
+                                    ImGui::Text("%d", node->Size);
+                                    ImGui::TableNextColumn();
+                                    ImGui::TextUnformatted(node->Type);
+                                } else {
+                                    node->checkboxState = false;
+                                }
                             }
                         }
-                    }
-                };
+                    };
 
-                static MyTreeNode nodes[] =
-                {
-                    { "Jobs",                         "Folder",       -1,       1, 3 , false   }, // 0
-                    { "Music",                        "Folder",       -1,       5, 2 , false   }, // 1
-                    { "Stuff",                        "Folder",       -1,       7, 3 , false   }, // 1
-                    { "Textures",                     "Folder",       -1,      10, 20, false   }, // 2
-                    { "desktop.ini",                  "System file",  1024,    -1,-1 , false   }, // 3
-                    { "File1_a.wav",                  "Audio file",   123000,  -1,-1 , false   }, // 4
-                    { "File1_b.wav",                  "Audio file",   456000,  -1,-1 , false   }, // 5
-                    { "Something.txt",                "Text file",    420,     -1,-1 , false   }, // 5                        
-                    { "Something.txt",                "Text file",    420,     -1,-1 , false   }, // 5                        
-                    { "Something.txt",                "Text file",    420,     -1,-1 , false   }, // 5                        
-                    { "Image001.png",                 "Image file",   203128,  -1,-1 , false   }, // 6
-                    { "Copy of Image001.png",         "Image file",   203256,  -1,-1 , false   }, // 7
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
-                    { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }  // 8
-                };
+                    static MyTreeNode nodes[] =
+                    {
+                        { "Jobs",                         "Folder",       -1,       1, 3 , false   }, // 0
+                        { "Music",                        "Folder",       -1,       5, 2 , false   }, // 1
+                        { "Stuff",                        "Folder",       -1,       7, 3 , false   }, // 1
+                        { "Textures",                     "Folder",       -1,      10, 20, false   }, // 2
+                        { "desktop.ini",                  "System file",  1024,    -1,-1 , false   }, // 3
+                        { "File1_a.wav",                  "Audio file",   123000,  -1,-1 , false   }, // 4
+                        { "File1_b.wav",                  "Audio file",   456000,  -1,-1 , false   }, // 5
+                        { "Something.txt",                "Text file",    420,     -1,-1 , false   }, // 5                        
+                        { "Something.txt",                "Text file",    420,     -1,-1 , false   }, // 5                        
+                        { "Something.txt",                "Text file",    420,     -1,-1 , false   }, // 5                        
+                        { "Image001.png",                 "Image file",   203128,  -1,-1 , false   }, // 6
+                        { "Copy of Image001.png",         "Image file",   203256,  -1,-1 , false   }, // 7
+                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }, // 8
+                        { "Copy of Image001 (Final2).png","Image file",   203512,  -1,-1 , false   }  // 8
+                    };
 
-                MyTreeNode::DisplayNode(&nodes[0], nodes);
+                    MyTreeNode::DisplayNode(&nodes[0], nodes);
 
-                ImGui::EndTable();
+                    ImGui::EndTable();
+                }
+                ImGui::EndChild();
             }
 
             ImGui::End();
         }
-        
+
+        {
+            ImGui::Begin("Plot");
+            if (plotFlag)
+            {
+                if(ImPlot::BeginPlot("Line Plots"))
+                {
+                    ImPlot::SetupAxes("x","y");
+                    ImPlot::SetupFinish(); 
+                    ImPlot::PlotLine("f(x)", xs1, ys1, tmp_size);
+                    // ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
+                    // ImPlot::PlotLine("g(x)", xs2, ys2, 20,ImPlotLineFlags_Segments);
+                    ImPlot::EndPlot();
+                }
+            }
+            ImGui::End();
+        }
         // Rendering
         ImGui::Render();
         int display_w, display_h;

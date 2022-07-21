@@ -13,7 +13,7 @@
 
 #CXX = g++
 #CXX = clang++
-
+DEBUG = 1
 UNAME_S := $(shell uname -s)
 BUILD_DIR = build-$(UNAME_S)
 BIN_DIR = bin
@@ -29,8 +29,11 @@ SOURCES += $(IMGUI_DIR)/imgui.cpp $(IMGUI_DIR)/imgui_demo.cpp $(IMGUI_DIR)/imgui
 SOURCES += $(IMGUI_DIR)/backends/imgui_impl_glfw.cpp $(IMGUI_DIR)/backends/imgui_impl_opengl2.cpp
 OBJS = $(addprefix $(BUILD_DIR)/, $(addsuffix .o, $(basename $(notdir $(SOURCES)))))
 
-CXXFLAGS = -std=c++11 -O3 -flto -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends -I$(IMPLOT_DIR) -I$(IMGUIFILEDIALOG_DIR)
-# -I$(IMGUIFILEBROWSER_DIR)
+ifeq ($(DEBUG), 0)
+        CXXFLAGS = -std=c++11 -O3 -flto -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends -I$(IMPLOT_DIR) -I$(IMGUIFILEDIALOG_DIR)
+else
+        CXXFLAGS = -std=c++11 -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends -I$(IMPLOT_DIR) -I$(IMGUIFILEDIALOG_DIR)
+endif
 CXXFLAGS += -g -Wall -Wformat
 LIBS =
 
