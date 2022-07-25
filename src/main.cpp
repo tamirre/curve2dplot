@@ -23,21 +23,15 @@
 #include <stdio.h>
 
 // For testing:
-
 #include <iostream>
-// #include <cstdlib>
 #include <time.h>
 #include <string>
 #include <vector>
-// #include <iterator>
-// #include <filesystem>
-// namespace fs = std::filesystem;
+#include <stdlib.h>
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <dirent.h>
- 
-// using namespace std;
-static bool show_filedialog = false;
 
 #ifdef __APPLE__
 #define GL_SILENCE_DEPRECATION
@@ -52,20 +46,17 @@ static bool show_filedialog = false;
 #pragma comment(lib, "legacy_stdio_definitions")
 #endif
 
-struct MyTreeNode
-{
+struct Node {
     std::string Name;
     int Index;
     int Size;
-    int ChildIdx;
-    int ChildCount;
     bool checkboxState;
+    Node *parent; 
+    std::vector<Node> children;
 
-    static void DisplayNode(MyTreeNode &node, std::vector<MyTreeNode> &all_nodes, ImGuiTextFilter filter)
+    static void DisplayNode(Node &node, ImGuiTextFilter filter)
     {
-        // std::cout << nodes.size() << std::endl;
-        // std::cout << nodes.front().Name << std::endl;
-        const bool is_folder = (node.ChildCount > 0);
+        const bool is_folder = (node.children.size() > 0);
         if (is_folder)
         {
             ImGui::TableNextRow();
@@ -74,13 +65,11 @@ struct MyTreeNode
                                                               ImGuiTreeNodeFlags_DefaultOpen);
             ImGui::TableNextColumn();
             ImGui::TextDisabled("--");
-            // ImGui::TableNextColumn();
-            // ImGui::TextUnformatted(node->Type);
             if (open)
             {
-                for (int child_n = 0; child_n < node.ChildCount; child_n++)
+                for (long unsigned int i = 0; i < node.children.size(); i++)
                 {
-                    DisplayNode(all_nodes[node.ChildIdx + child_n], all_nodes, filter);
+                    DisplayNode(node.children[i], filter);
                 }
                 ImGui::TreePop();
             }
@@ -107,9 +96,19 @@ struct MyTreeNode
                                                       ImGuiTreeNodeFlags_SpanFullWidth);
 
                 ImGui::TableNextColumn();
-                ImGui::Text("%d", node.Size);
-                // ImGui::TableNextColumn();
-                // ImGui::TextUnformatted(node->Type);
+                float sizeDisplay;
+                if (node.Size < 1024)
+                {
+                    ImGui::Text("%d B", node.Size);
+                } else if (node.Size < 1024*1024)
+                {
+                    sizeDisplay = (float)(node.Size)/1024.0f; 
+                    ImGui::Text("%.2f KB", sizeDisplay);
+                } else 
+                {
+                    sizeDisplay = (float)(node.Size)/(1024.0f*1024.0f); 
+                    ImGui::Text("%.2f MB", sizeDisplay);
+                }
             } else {
                 node.checkboxState = false;
             }
@@ -137,19 +136,29 @@ static void glfw_error_callback(int error, const char* description)
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-std::vector<std::string> listFilesInDirectory(std::string path)
+Node listFilesInDirectory(std::string path)
 {
-    std::vector<std::string> fileList;
-    fileList.push_back(path);
+
+    int id = 0;
+    Node root = {path, id, -1, false, NULL};
+    std::vector<Node> children;
     DIR* dir;
     struct dirent * ent;
+    struct stat st;
+
     if ((dir = opendir(path.c_str())) != NULL)
     {
         while ((ent = readdir(dir)) != NULL)
         {
             if(ent->d_type == DT_REG)
             {
-                fileList.push_back(path + std::string("/") + ent->d_name);
+                std::string fileName = path + std::string("/") + ent->d_name;
+                stat(fileName.c_str(), &st);
+                int size = st.st_size;
+
+                // fileList.push_back(path + std::string("/") + ent->d_name);
+                Node child = {ent->d_name, id++, size, false, &root};
+                children.push_back(child);
             // } else if(dp->d_type == DT_DIR) {
             }
         }
@@ -157,81 +166,29 @@ std::vector<std::string> listFilesInDirectory(std::string path)
 
     }
     closedir(dir);
-    // for (auto i: fileList)
-    // {
-    //     std::cout << i << std::endl;
-    // }
+    root.children = children;
 
-    return fileList;
-    // static ImVector<fs::path> fileList;
-    // DIR *dir;
-    // struct dirent *ent;
-    // if ((dir = opendir(path)) != NULL)
-    // {
-    //     /* print all the files and directories within directory */
-    //     while ((ent = readdir(dir)) != NULL)
-    //     {
-    //         if(ent->d_type == DT_REG)
-    //         {
-    //             fileList.push_back(ent->d_name);
-    //         } //else if(ent->d_type == DT_DIR) {
-    //             // listFilesInDirectory()
-    //         //}
-    //     }
-    //     closedir(dir);
-    // } else {
-    //     // TODO: error "Could not open directory"
-    // }
-
-    // for (const auto & entry : fs::directory_iterator(path))
-    //     // std::cout << entry.path() << std::endl;
-    //     fileList.push_back(entry.path());
-    // std::fstream fs;
-    // fs.open(entry.path(), std::fstream::in);
-    // for (int i = 0; i < fileList.Size; i++)
-    // {
-    //     std::cout << fileList[i] << std::endl;
-    // }
+    // printTree(&root);
+    return root;
 }
 
-void appendTree(std::vector<std::string> fileList, std::vector<MyTreeNode> &nodes, int id, int &parentCntr)
-{
-    // int n = fileList.size();
-    // std::cout << n << std::endl;
-    // ImVector<MyTreeNode> nodes;
-    MyTreeNode node;
-    node.Name = fileList.front();
-    node.Index = ++id;
-    node.Size = -1;
-    if (nodes.size() == 1)
-        node.ChildIdx = nodes.size();
-    else
-        node.ChildIdx = nodes.size()+1;
-    node.ChildCount = fileList.size()-1;
-    node.checkboxState = false;
-
-    if (nodes.size() > 1)
-        nodes.insert(nodes.begin()+parentCntr, node);        
-    else
-        nodes.push_back(node);
-    parentCntr++;
-    
-    for(auto i = fileList.begin() + 1; i != fileList.end(); ++i)
-    {
-        MyTreeNode node;
-        node.Name = *i;
-        node.Index = ++id;
-        node.Size = 777; //TODO
-        node.ChildIdx = -1;
-        node.ChildCount = -1;
-        node.checkboxState = false;
-        nodes.push_back(node);
+void printTree(const Node *node) {
+    if (node) {
+        std::cout << "Name: " << node->Name << std::endl;
+        std::cout << "Index: " << node->Index << std::endl;
+        if (node->parent) {
+            std::cout << "Parent: " << node->parent->Name << std::endl;
+        }
+        // if (node->children) {
+            std::cout << "Children: " << std::endl;
+            for (long unsigned int i = 0; i < node->children.size(); i++) {
+                std::cout << node->children[i].Name << std::endl;
+            }
+        // }
     }
-
-    // return nodes;
 }
 
-void openFileDialog(bool *p_open, std::vector<MyTreeNode> &nodes, int &parentCntr)
+void openFileDialog(bool *p_open, Node &Tree)
 {
     ImVec2 maxSize = ImVec2(800.0, 400.0);  // The full display area
     ImVec2 minSize = ImVec2(400.0, 200.0); // Half the display area
@@ -245,12 +202,10 @@ void openFileDialog(bool *p_open, std::vector<MyTreeNode> &nodes, int &parentCnt
         {
             std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
             std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
-            // action
-            std::vector <std::string> fileList = listFilesInDirectory(filePathName);
-            // static std::vector <MyTreeNode> nodes;
-            appendTree(fileList, nodes, nodes.back().Index, parentCntr);
-            for (auto i: nodes)
-                std::cout <<"ID: "  << i.Index << ", CIndex: " << i.ChildIdx << ", CCount: " << i.ChildCount << ", Name: " <<i.Name << std::endl;
+            // std::vector <std::string> fileList = listFilesInDirectory(filePathName);
+            Tree = listFilesInDirectory(filePathName);
+            
+            // Tree = buildTree(fileList);
         }
 
         // close
@@ -263,23 +218,7 @@ void openFileDialog(bool *p_open, std::vector<MyTreeNode> &nodes, int &parentCnt
 
 void showMainMenu()
 {
-    if(ImGui::BeginMainMenuBar())
-    {
-        if (ImGui::BeginMenu("File"))
-        {
-            if (ImGui::MenuItem("Open Directory...", "CTRL+O", &show_filedialog))
-            {
-                
-            }
-            if (ImGui::MenuItem("Add Directory...", "CTRL+D", &show_filedialog))
-            {
-                
-            }
-            
-            ImGui::EndMenu();
-        }
-        ImGui::EndMainMenuBar();
-    }
+
 }
 
 struct Curve
@@ -293,22 +232,6 @@ struct Curve
 // {
 
 // }
-void initNodes(std::vector<MyTreeNode> &nodes)
-{
-    MyTreeNode dummyNode;
-    dummyNode.Index = -1;
-    dummyNode.Name = "DUMMY";
-    dummyNode.Size = -1;
-    dummyNode.ChildIdx = -1;
-    dummyNode.ChildCount = 0;
-    dummyNode.checkboxState = false;
-    nodes.push_back(dummyNode);
-    // std::vector <std::string> fileList = ;
-    int dummyCntr;
-    appendTree(listFilesInDirectory("."), nodes, nodes.back().Index, dummyCntr);
-    nodes.erase(nodes.begin());
-    // nodes.pop_back();
-}
 
 int main(int, char**)
 {
@@ -380,13 +303,11 @@ int main(int, char**)
     // IM_ASSERT(font != NULL);
  
     // Our state
-
     bool show_demo_window = true;
+    bool show_filedialog = false;
     bool plotFlag = false;
     static ImVector<Curve> plotList;
-    static std::vector<MyTreeNode> nodes;
-    initNodes(nodes);
-    static int parentCntr = 0;
+    Node Tree;
     
     // bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.086f, 0.086f, 0.086f, 1.00f);
@@ -407,12 +328,29 @@ int main(int, char**)
         ImGui::NewFrame();
 
         // Show menu bar for opening/adding a directory
-        showMainMenu();
+        if(ImGui::BeginMainMenuBar())
+        {
+            if (ImGui::BeginMenu("File"))
+            {
+                if (ImGui::MenuItem("Open Directory...", "CTRL+O", &show_filedialog))
+                {
+                    // openFileDialog(&show_filedialog, nodes, parentCntr);
+                }
+                if (ImGui::MenuItem("Add Directory...", "CTRL+D", &show_filedialog))
+                {
+
+                }
+
+                ImGui::EndMenu();
+            }
+            ImGui::EndMainMenuBar();
+        }
 
         // Make docspace in main window
         ImGui::DockSpaceOverViewport();
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-        if (show_filedialog) openFileDialog(&show_filedialog, nodes, parentCntr);
+        // if(show_filedialog) openFileDialog(&show_filedialog, nodes, parentCntr);
+        if(show_filedialog) openFileDialog(&show_filedialog, Tree);
         if (show_demo_window)
         {
             ImGui::ShowDemoWindow(&show_demo_window);
@@ -459,53 +397,7 @@ int main(int, char**)
                     ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 12.0f);
                     ImGui::TableHeadersRow();
 
-                    // Simple storage to output a dummy file-system.
-
-                    // static MyTreeNode nodes[] =
-                    // {
-                    //     { "Jobs",                           -1,       1, 3 , false   }, // 0
-                    //     { "Music",                          -1,       5, 2 , false   }, // 1
-                    //     { "Stuff",                          -1,       7, 3 , false   }, // 1
-                    //     { "Textures",                       -1,      10, 20, false   }, // 2
-                    //     { "desktop.ini",                    1024,    -1,-1 , false   }, // 3
-                    //     { "File1_a.wav",                    123000,  -1,-1 , false   }, // 4
-                    //     { "File1_b.wav",                    456000,  -1,-1 , false   }, // 5
-                    //     { "Something.txt",                  420,     -1,-1 , false   }, // 5                        
-                    //     { "Something.txt",                  420,     -1,-1 , false   }, // 5                        
-                    //     { "Something.txt",                  420,     -1,-1 , false   }, // 5                        
-                    //     { "Image001.png",                   203128,  -1,-1 , false   }, // 6
-                    //     { "Copy of Image001.png",           203256,  -1,-1 , false   }, // 7
-                    //     { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
-                    //     { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
-                    //     { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
-                    //     { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
-                    //     { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
-                    //     { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
-                    //     { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
-                    //     { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
-                    //     { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
-                    //     { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
-                    //     { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
-                    //     { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
-                    //     { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
-                    //     { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
-                    //     { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
-                    //     { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
-                    //     { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }, // 8
-                    //     { "Copy of Image001 (Final2).png",  203512,  -1,-1 , false   }  // 8
-                    // };
-
-                    // if (nodes.size() != 0)
-                    // {
-
-                    // std::cout << nodes << std::endl;
-                    // MyTreeNode::DisplayNode(&nodes[0], nodes, filter);
-                    MyTreeNode::DisplayNode(nodes.front(), nodes, filter);
-                    // }
-                    // else
-                    // {
-                        // std::cout << "stupido" << std::endl;
-                    // }
+                    Node::DisplayNode(Tree, filter);
 
                     ImGui::EndTable();
                 }
@@ -521,9 +413,6 @@ int main(int, char**)
             
             static ImVector<int> active_tabs;
             static int next_tab_id = 0;
-            // if (next_tab_id == 0) // Initialize with some default tabs
-            //     for (int i = 0; i < 3; i++)
-            //         active_tabs.push_back(next_tab_id++);
 
             // TabItemButton() and Leading/Trailing flags are distinct features which we will demo together.
             // (It is possible to submit regular tabs with Leading/Trailing flags, or TabItemButton tabs without Leading/Trailing flags...
