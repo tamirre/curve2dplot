@@ -28,6 +28,7 @@
 #include <string>
 #include <vector>
 #include <stdlib.h>
+#include <fstream>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -46,6 +47,32 @@
 #pragma comment(lib, "legacy_stdio_definitions")
 #endif
 
+// Helper to display a little (?) mark which shows a tooltip when hovered.
+// In your own code you may want to display an actual icon if you are using a merged icon fonts (see docs/FONTS.md)
+static void HelpMarker(const char* desc)
+{
+    ImGui::TextDisabled("(?)");
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(desc);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+}
+
+static void glfw_error_callback(int error, const char* description)
+{
+    fprintf(stderr, "Glfw Error %d: %s\n", error, description);
+}
+
+struct Curve
+{
+    std::vector<double> x;
+    std::vector<double> y;
+};
+
 struct Node {
     std::string Name;
     int Index;
@@ -53,6 +80,7 @@ struct Node {
     bool checkboxState;
     Node *parent; 
     std::vector<Node> children;
+    Curve curve;
 
     static void DisplayNode(Node &node, ImGuiTextFilter filter)
     {
@@ -116,29 +144,37 @@ struct Node {
     }
 };
 
-// Helper to display a little (?) mark which shows a tooltip when hovered.
-// In your own code you may want to display an actual icon if you are using a merged icon fonts (see docs/FONTS.md)
-static void HelpMarker(const char* desc)
+Curve readCurve(std::string filePath)
 {
-    ImGui::TextDisabled("(?)");
-    if (ImGui::IsItemHovered())
-    {
-        ImGui::BeginTooltip();
-        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-        ImGui::TextUnformatted(desc);
-        ImGui::PopTextWrapPos();
-        ImGui::EndTooltip();
-    }
-}
+    Curve curve;
 
-static void glfw_error_callback(int error, const char* description)
-{
-    fprintf(stderr, "Glfw Error %d: %s\n", error, description);
+    std::ifstream file;
+    std::string line;
+    double x,y;
+    file.open(filePath);
+    if (file.is_open())
+    {
+        while(getline(file,line))
+        {
+            // Skip comments marked by # character
+            if (line[0] == '#') continue;
+            file >> x >> y;
+            curve.x.push_back(x);
+            curve.y.push_back(y);
+        }    
+    }
+    else std::cout << "Unable to open file"; 
+    file.close();
+
+    // std::cout.precision(8);
+    // for(int i = 0; i<curve.x.size(); i++)
+    //     std::cout << "X: " << std::fixed << curve.x[i] << ", Y: " << std::fixed << curve.y[i] << std::endl;
+    
+    return curve;
 }
 
 Node listFilesInDirectory(std::string path)
 {
-
     int id = 0;
     Node root = {path, id, -1, false, NULL};
     std::vector<Node> children;
@@ -152,12 +188,13 @@ Node listFilesInDirectory(std::string path)
         {
             if(ent->d_type == DT_REG)
             {
-                std::string fileName = path + std::string("/") + ent->d_name;
-                stat(fileName.c_str(), &st);
+                std::string filePath = path + std::string("/") + ent->d_name;
+                stat(filePath.c_str(), &st);
                 int size = st.st_size;
 
-                // fileList.push_back(path + std::string("/") + ent->d_name);
                 Node child = {ent->d_name, id++, size, false, &root};
+                child.curve = readCurve(filePath);
+                
                 children.push_back(child);
             // } else if(dp->d_type == DT_DIR) {
             }
@@ -220,13 +257,6 @@ void showMainMenu()
 {
 
 }
-
-struct Curve
-{
-    int size = 101;
-    float x[101];
-    float y[101];
-};
 
 // void appendPlotList()
 // {
@@ -306,7 +336,7 @@ int main(int, char**)
     bool show_demo_window = true;
     bool show_filedialog = false;
     bool plotFlag = false;
-    static ImVector<Curve> plotList;
+    // static ImVector<Curve> plotList;
     Node Tree;
     
     // bool show_another_window = false;
@@ -457,14 +487,14 @@ int main(int, char**)
                 // Submit tab item on plot button press
                 if (plotFlag)
                 {
-                    Curve tmp;
-                    // srand(time(0));
-                    // static float xs1[tmp_size], ys1[tmp_size];
-                    for (int i = 0; i < tmp.size; ++i) {
-                        tmp.x[i] = i * 1.0f/(tmp.size-1);
-                        tmp.y[i] = next_tab_id;
-                    }
-                    plotList.push_back(tmp);
+                //     // Curve tmp;
+                //     // // srand(time(0));
+                //     // // static float xs1[tmp_size], ys1[tmp_size];
+                //     // for (int i = 0; i < tmp.x.size(); ++i) {
+                //     //     tmp.x[i] = i * 1.0f/(tmp.x.size()-1);
+                //     //     tmp.y[i] = next_tab_id;
+                //     // }
+                //     plotList.push_back(tmp);
                     active_tabs.push_back(next_tab_id++);
                     plotFlag = false;
                 }
@@ -485,10 +515,21 @@ int main(int, char**)
                             ImPlot::SetupAxes("x","y");
                             ImPlot::SetupFinish();
 
-                            std::string functionName = std::string("f") + std::to_string(active_tabs[n]) + std::string("(x)");
-                            ImPlot::PlotLine(functionName.c_str(), plotList[n].x, plotList[n].y, plotList[n].size);
-                            // ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
-                            // ImPlot::PlotLine("g(x)", xs2, ys2, 20,ImPlotLineFlags_Segments);
+                            for (long unsigned int i = 0; i < Tree.children.size(); i++)
+                            {
+                                // std::string functionName = std::to_string(Tree.children[i].Name);
+                                if(Tree.children[i].checkboxState == true)
+                                {
+                                    double* x = &Tree.children[i].curve.x[0];
+                                    double* y = &Tree.children[i].curve.y[0];
+                                    ImPlot::PlotLine(Tree.children[i].Name.c_str(),
+                                                     x,
+                                                     y,
+                                                     Tree.children[i].curve.x.size());
+                                }
+
+                            }
+                            
                             ImPlot::EndPlot();
                         }
                          
@@ -497,7 +538,7 @@ int main(int, char**)
 
                     if (!open)
                     {
-                        plotList.erase(plotList.Data + n);
+                        // plotList.erase(plotList.Data + n);
                         active_tabs.erase(active_tabs.Data + n);
                     }
                     else
