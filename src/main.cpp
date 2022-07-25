@@ -169,6 +169,7 @@ struct Node {
                     ImGui::Text("%.2f MB", sizeDisplay);
                 }
             } else {
+                // TODO: Should we keep or remove the checkbox?
                 root.checkboxState = false;
             }
         }
@@ -240,27 +241,28 @@ Node listFilesInDirectory(std::string path)
 
     }
     closedir(dir);
+    // TODO: std::move?
     root.children = children;
 
     // printTree(&root);
     return root;
 }
 
-void printNode(const Node *node) {
-    if (node) {
-        std::cout << "Name: " << node->Name << std::endl;
-        std::cout << "Index: " << node->Index << std::endl;
-        if (node->parent) {
-            std::cout << "Parent: " << node->parent->Name << std::endl;
-        }
-        // if (node->children) {
-            std::cout << "Children: " << std::endl;
-            for (long unsigned int i = 0; i < node->children.size(); i++) {
-                std::cout << node->children[i].Name << std::endl;
-            }
-        // }
-    }
-}
+// void printNode(const Node *node) {
+//     if (node) {
+//         std::cout << "Name: " << node->Name << std::endl;
+//         std::cout << "Index: " << node->Index << std::endl;
+//         if (node->parent) {
+//             std::cout << "Parent: " << node->parent->Name << std::endl;
+//         }
+//         // if (node->children) {
+//             std::cout << "Children: " << std::endl;
+//             for (long unsigned int i = 0; i < node->children.size(); i++) {
+//                 std::cout << node->children[i].Name << std::endl;
+//             }
+//         // }
+//     }
+// }
 
 void openFileDialog(bool *p_open, std::vector<Node> &Tree)
 {
@@ -380,7 +382,8 @@ int main(int, char**)
     bool show_demo_window = true;
     bool show_filedialog = false;
     bool plotFlag = false;
-    // static ImVector<Curve> plotList;
+    bool addDirFlag = false;
+
     std::vector<Node> Tree;
     
     // bool show_another_window = false;
@@ -410,10 +413,11 @@ int main(int, char**)
                 {
                     // openFileDialog(&show_filedialog, nodes, parentCntr);
                 }
-                if (ImGui::MenuItem("Add Directory...", "CTRL+D", &show_filedialog))
-                {
-
-                }
+                // TODO: implement quit option
+                // if (ImGui::MenuItem("Quit...", "Alt+F4", &quit_application))
+                // {
+                    
+                // }
 
                 ImGui::EndMenu();
             }
@@ -437,11 +441,23 @@ int main(int, char**)
             
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
+            static char pathInputText[128] = "";
+            ImGui::InputTextWithHint("##", "Absolute path to directory...", pathInputText, IM_ARRAYSIZE(pathInputText));
+            ImGui::SameLine();
+            
+            if(ImGui::Button("Add Directory"))
+                addDirFlag = true;
+
+            if(addDirFlag)
+            {
+                Tree.push_back(listFilesInDirectory(std::string(pathInputText)));
+                addDirFlag = false;
+            }
             static ImGuiTextFilter filter;
             filter.Draw("Search");
             ImGui::SameLine();
             HelpMarker(
-                "Input regular expression search string here."
+                "Input search string here."
             );
             ImGui::SameLine();
             if(ImGui::Button("Plot"))
@@ -572,6 +588,7 @@ int main(int, char**)
                                     {
                                         double* x = &Tree[i].children[j].curve.x[0];
                                         double* y = &Tree[i].children[j].curve.y[0];
+                                        // TODO: does PlotLine convert to float?
                                         ImPlot::PlotLine(Tree[i].children[j].pathName.c_str(),
                                                          x,
                                                          y,
