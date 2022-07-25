@@ -67,6 +67,34 @@ static void glfw_error_callback(int error, const char* description)
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
+// helper function to split a string
+std::string tokenize(std::string s)
+{
+
+    std::string del = "\\";
+    int start = 0;
+    int end;
+    // NOTE(Tamir): To avoid checking the OS
+    // Try windows first
+    if (s.find(del) != std::string::npos)
+    {
+        end = s.find(del);
+    }
+    // Then try linux...
+    else
+    {
+        end = s.find(std::string("/"));
+        del = "/";
+    }
+    while (end != -1) {
+        // cout << s.substr(start, end - start) << endl;
+        start = end + del.size();
+        end = s.find(del, start);
+    }
+
+    return s.substr(start, start-end);
+}
+
 struct Curve
 {
     std::vector<double> x;
@@ -75,6 +103,7 @@ struct Curve
 
 struct Node {
     std::string Name;
+    std::string pathName;
     int Index;
     int Size;
     bool checkboxState;
@@ -82,63 +111,65 @@ struct Node {
     std::vector<Node> children;
     Curve curve;
 
-    static void DisplayNode(Node &node, ImGuiTextFilter filter)
+    static void DisplayNodes(Node &root, ImGuiTextFilter filter)
     {
-        const bool is_folder = (node.children.size() > 0);
+        const bool is_folder = (root.children.size() > 0);
         if (is_folder)
         {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            bool open = ImGui::TreeNodeEx(node.Name.c_str(), ImGuiTreeNodeFlags_SpanFullWidth |
+            bool open = ImGui::TreeNodeEx(root.Name.c_str(), ImGuiTreeNodeFlags_SpanFullWidth |
                                                               ImGuiTreeNodeFlags_DefaultOpen);
             ImGui::TableNextColumn();
             ImGui::TextDisabled("--");
             if (open)
             {
-                for (long unsigned int i = 0; i < node.children.size(); i++)
+
+                for (long unsigned int j = 0; j < root.children.size(); j++)
                 {
-                    DisplayNode(node.children[i], filter);
+                    DisplayNodes(root.children[j], filter);
                 }
+
                 ImGui::TreePop();
             }
         }
         else
         {                        
-            if(filter.PassFilter(node.Name.c_str()))
+            if(filter.PassFilter(root.Name.c_str()))
             {
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
 
-                int nodeIdx = (int)(node.Index);
+                int nodeIdx = (int)(root.Index);
                 std::string strNodeIdx = std::string("##") + std::to_string(nodeIdx);
 
-                ImGui::Checkbox(strNodeIdx.c_str(), &node.checkboxState);
+                ImGui::Checkbox(strNodeIdx.c_str(), &root.checkboxState);
                 // ImGui::Checkbox("##", &node->checkboxState);
                 float rowSpacing = ImGui::GetCursorPosX() + 5.0f;
                 ImGui::SameLine();
                 ImGui::SetCursorPosX(rowSpacing);
                 // ImGui::SameLine(1.0f, ImGui::GetCursorPosX());
 
-                ImGui::TreeNodeEx(node.Name.c_str(), ImGuiTreeNodeFlags_Leaf |
+                ImGui::TreeNodeEx(root.Name.c_str(), ImGuiTreeNodeFlags_Leaf |
                                                       ImGuiTreeNodeFlags_NoTreePushOnOpen |
                                                       ImGuiTreeNodeFlags_SpanFullWidth);
 
                 ImGui::TableNextColumn();
                 float sizeDisplay;
-                if (node.Size < 1024)
+                if (root.Size < 1024)
                 {
-                    ImGui::Text("%d B", node.Size);
-                } else if (node.Size < 1024*1024)
+                    ImGui::Text("%d B", root.Size);
+                } else if (root.Size < 1024*1024)
                 {
-                    sizeDisplay = (float)(node.Size)/1024.0f; 
+                    sizeDisplay = (float)(root.Size)/1024.0f; 
                     ImGui::Text("%.2f KB", sizeDisplay);
                 } else 
                 {
-                    sizeDisplay = (float)(node.Size)/(1024.0f*1024.0f); 
+                    sizeDisplay = (float)(root.Size)/(1024.0f*1024.0f); 
                     ImGui::Text("%.2f MB", sizeDisplay);
                 }
             } else {
-                node.checkboxState = false;
+                root.checkboxState = false;
             }
         }
     }
@@ -176,7 +207,7 @@ Curve readCurve(std::string filePath)
 Node listFilesInDirectory(std::string path)
 {
     int id = 0;
-    Node root = {path, id, -1, false, NULL};
+    Node root = {path, ".", id, -1, false, NULL};
     std::vector<Node> children;
     DIR* dir;
     struct dirent * ent;
@@ -188,11 +219,17 @@ Node listFilesInDirectory(std::string path)
         {
             if(ent->d_type == DT_REG)
             {
+
                 std::string filePath = path + std::string("/") + ent->d_name;
+// #if _WIN32
+                std::string filePathName = tokenize(path) + std::string("/") + ent->d_name;
+// #elif __linux__
+//                 std::string filePathName = tokenize(path, "/") + std::string("/") + ent->d_name;
+// #endif
                 stat(filePath.c_str(), &st);
                 int size = st.st_size;
 
-                Node child = {ent->d_name, id++, size, false, &root};
+                Node child = {ent->d_name, filePathName, id++, size, false, &root};
                 child.curve = readCurve(filePath);
                 
                 children.push_back(child);
@@ -209,7 +246,7 @@ Node listFilesInDirectory(std::string path)
     return root;
 }
 
-void printTree(const Node *node) {
+void printNode(const Node *node) {
     if (node) {
         std::cout << "Name: " << node->Name << std::endl;
         std::cout << "Index: " << node->Index << std::endl;
@@ -225,7 +262,7 @@ void printTree(const Node *node) {
     }
 }
 
-void openFileDialog(bool *p_open, Node &Tree)
+void openFileDialog(bool *p_open, std::vector<Node> &Tree)
 {
     ImVec2 maxSize = ImVec2(800.0, 400.0);  // The full display area
     ImVec2 minSize = ImVec2(400.0, 200.0); // Half the display area
@@ -239,10 +276,17 @@ void openFileDialog(bool *p_open, Node &Tree)
         {
             std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
             std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
-            // std::vector <std::string> fileList = listFilesInDirectory(filePathName);
-            Tree = listFilesInDirectory(filePathName);
+
+            // NOTE: Attempts at multiselection:
+            // std::string userDatas;
+            // if (ImGuiFileDialog::Instance()->GetUserDatas())
+            // {
+            //     userDatas = std::string((const char*)ImGuiFileDialog::Instance()->GetUserDatas());
+            // }
+            // auto selection = ImGuiFileDialog::Instance()->GetSelection(); // multiselection
+            // std::cout << typeid(selection).name() << std::endl;
             
-            // Tree = buildTree(fileList);
+            Tree.push_back(listFilesInDirectory(filePathName));
         }
 
         // close
@@ -337,7 +381,7 @@ int main(int, char**)
     bool show_filedialog = false;
     bool plotFlag = false;
     // static ImVector<Curve> plotList;
-    Node Tree;
+    std::vector<Node> Tree;
     
     // bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.086f, 0.086f, 0.086f, 1.00f);
@@ -427,7 +471,10 @@ int main(int, char**)
                     ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 12.0f);
                     ImGui::TableHeadersRow();
 
-                    Node::DisplayNode(Tree, filter);
+                    for (long unsigned int i = 0; i < Tree.size(); i++)
+                    {
+                        Node::DisplayNodes(Tree[i], filter);
+                    }
 
                     ImGui::EndTable();
                 }
@@ -440,7 +487,8 @@ int main(int, char**)
         // PLOT WINDOW SECTION
         {
             ImGui::Begin("Plot");
-            
+
+            static bool show_trailing_button = true;
             static ImVector<int> active_tabs;
             static int next_tab_id = 0;
 
@@ -448,7 +496,7 @@ int main(int, char**)
             // (It is possible to submit regular tabs with Leading/Trailing flags, or TabItemButton tabs without Leading/Trailing flags...
             // but they tend to make more sense together)
             // static bool show_leading_button = true;
-            // static bool show_trailing_button = true;
+
             // ImGui::Checkbox("Show Leading TabItemButton()", &show_leading_button);
             // ImGui::Checkbox("Show Trailing TabItemButton()", &show_trailing_button);
 
@@ -479,10 +527,10 @@ int main(int, char**)
 
                 // Demo Trailing Tabs: click the "+" button to add a new tab (in your app you may want to use a font icon instead of the "+")
                 // Note that we submit it before the regular tabs, but because of the ImGuiTabItemFlags_Trailing flag it will always appear at the end.
-                // if (show_trailing_button)
-                //     if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip))
-                //         active_tabs.push_back(next_tab_id++); // Add new tab
-                //         appendPlotList(plotList);
+                if (show_trailing_button)
+                    if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip))
+                        active_tabs.push_back(next_tab_id++); // Add new tab
+                        // appendPlotList(plotList);
 
                 // Submit tab item on plot button press
                 if (plotFlag)
@@ -515,19 +563,22 @@ int main(int, char**)
                             ImPlot::SetupAxes("x","y");
                             ImPlot::SetupFinish();
 
-                            for (long unsigned int i = 0; i < Tree.children.size(); i++)
+                            for (long unsigned int i = 0; i < Tree.size(); i++)
                             {
-                                // std::string functionName = std::to_string(Tree.children[i].Name);
-                                if(Tree.children[i].checkboxState == true)
+                                for (long unsigned int j = 0; j < Tree[i].children.size(); j++)
                                 {
-                                    double* x = &Tree.children[i].curve.x[0];
-                                    double* y = &Tree.children[i].curve.y[0];
-                                    ImPlot::PlotLine(Tree.children[i].Name.c_str(),
-                                                     x,
-                                                     y,
-                                                     Tree.children[i].curve.x.size());
-                                }
+                                    // std::string functionName = std::to_string(Tree.children[i].Name);
+                                    if(Tree[i].children[j].checkboxState == true)
+                                    {
+                                        double* x = &Tree[i].children[j].curve.x[0];
+                                        double* y = &Tree[i].children[j].curve.y[0];
+                                        ImPlot::PlotLine(Tree[i].children[j].pathName.c_str(),
+                                                         x,
+                                                         y,
+                                                         Tree[i].children[j].curve.x.size()-1); // length-1 for correct size
+                                    }
 
+                                }
                             }
                             
                             ImPlot::EndPlot();
