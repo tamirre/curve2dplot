@@ -169,7 +169,6 @@ struct Node {
                     ImGui::Text("%.2f MB", sizeDisplay);
                 }
             } else {
-                // TODO: Should we keep or remove the checkbox?
                 root.checkboxState = false;
             }
         }
@@ -450,7 +449,10 @@ int main(int, char**)
 
             if(addDirFlag)
             {
-                Tree.push_back(listFilesInDirectory(std::string(pathInputText)));
+                if (!(std::string(pathInputText).empty()))
+                {
+                    Tree.push_back(listFilesInDirectory(std::string(pathInputText)));
+                }
                 addDirFlag = false;
             }
             static ImGuiTextFilter filter;
