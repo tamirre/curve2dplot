@@ -285,7 +285,7 @@ void Demo_Config() {
 //-----------------------------------------------------------------------------
 
 void Demo_LinePlots() {
-    const int size = 11;
+    const int size = 101;
     static float xs1[size], ys1[size];
     for (int i = 0; i < size; ++i) {
         xs1[i] = i * 1.0f/(size-1);
