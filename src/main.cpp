@@ -103,6 +103,7 @@ struct Curve
     // Options:
     ImVec4 color = ImVec4(IMPLOT_AUTO_COL);
     float thickness = 1.0f;
+    bool markerFlag = false;
     ImPlotMarker marker;
     float markerSize = 1.0f;
     float markerWeight = 1.0f;
@@ -119,7 +120,7 @@ struct Node {
     std::vector<Node> children;
     Curve curve;
 
-    static void DisplayNodes(Node &root, ImGuiTextFilter filter)
+    static void DisplayNodes(Node &root, ImGuiTextFilter filter, std::vector<Node> &Tree)
     {
         const bool is_folder = (root.children.size() > 0);
         if (is_folder)
@@ -128,9 +129,32 @@ struct Node {
             ImGui::TableNextColumn();
             bool open = ImGui::TreeNodeEx(root.Name.c_str(), ImGuiTreeNodeFlags_SpanFullWidth |
                                                               ImGuiTreeNodeFlags_DefaultOpen);
-            ImGui::TableNextColumn();
+
+            if (ImGui::BeginPopupContextItem(root.Name.c_str())) // <-- use last item id as popup id
+            {
+                // ImGui::Text("This a popup for \"%s\"!", root.Name.c_str());
+                ImGui::Text("Action:");
+                if (ImGui::Button("Reload"))
+                {
+                    // reloadFile();
+                }
+                 
+                if (ImGui::Button("Remove"))
+                {
+                    Tree.erase(Tree.begin() + root.Index);
+                    ImGui::CloseCurrentPopup();
+                }
+
+                // if (ImGui::Button("Close"))
+                //     ImGui::CloseCurrentPopup();
+                ImGui::EndPopup();
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Right-click for optons");
             // ImGui::TextDisabled("--");
-            ImGui::Button("Options");
+            // ImGui::TableNextColumn();
+            // ImGui::Button("Options");
+            ImGui::TableNextColumn();
 
             // // POPUPTEST
             // static int selected_fish = -1;
@@ -157,7 +181,7 @@ struct Node {
 
                 for (long unsigned int j = 0; j < root.children.size(); j++)
                 {
-                    DisplayNodes(root.children[j], filter);
+                    DisplayNodes(root.children[j], filter, Tree);
                 }
 
                 ImGui::TreePop();
@@ -234,7 +258,7 @@ Curve readCurve(std::string filePath)
     return curve;
 }
 
-Node listFilesInDirectory(std::string path)
+Node listFilesInDirectory(std::string path, std::string &lastPath)
 {
     int id = 0;
     Node root = {path, ".", id, -1, false, NULL};
@@ -251,6 +275,7 @@ Node listFilesInDirectory(std::string path)
             {
 
                 std::string filePath = path + std::string("/") + ent->d_name;
+                lastPath = filePath;
 // #if _WIN32
                 std::string filePathName = tokenize(path) + std::string("/") + ent->d_name;
 // #elif __linux__
@@ -259,7 +284,8 @@ Node listFilesInDirectory(std::string path)
                 stat(filePath.c_str(), &st);
                 int size = st.st_size;
 
-                Node child = {ent->d_name, filePathName, id++, size, false, &root};
+                // Node child = {ent->d_name, filePathName, id++, size, false, &root};
+                Node child = {ent->d_name, filePath, id++, size, false, &root};
                 child.curve = readCurve(filePath);
                 
                 children.push_back(child);
@@ -293,12 +319,12 @@ Node listFilesInDirectory(std::string path)
 //     }
 // }
 
-void openFileDialog(bool *p_open, std::vector<Node> &Tree)
+void openFileDialog(bool *p_open, std::vector<Node> &Tree, std::string &lastPath)
 {
     ImVec2 maxSize = ImVec2(800.0, 400.0);  // The full display area
     ImVec2 minSize = ImVec2(400.0, 200.0); // Half the display area
 
-    ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Choose a Directory", nullptr, ".", 0);
+    ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Choose a Directory", nullptr, lastPath, 0);
     // display
     if (ImGuiFileDialog::Instance()->Display("ChooseDirDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize)) 
     {
@@ -316,8 +342,16 @@ void openFileDialog(bool *p_open, std::vector<Node> &Tree)
             // }
             // auto selection = ImGuiFileDialog::Instance()->GetSelection(); // multiselection
             // std::cout << typeid(selection).name() << std::endl;
-            
-            Tree.push_back(listFilesInDirectory(filePathName));
+
+            // Check wether curve directory already exists in tree
+            bool addNode = true;
+            for(long unsigned int i = 0; i < Tree.size(); i++)
+            {
+                if(Tree[i].Name == filePathName)
+                    addNode = false;
+            }
+            if(addNode)
+                Tree.push_back(listFilesInDirectory(filePathName, lastPath));
         }
 
         // close
@@ -408,6 +442,7 @@ int main(int, char**)
     // IM_ASSERT(font != NULL);
  
     // Our state
+    static std::string lastPath = ".";
     bool show_demo_window = true;
     bool show_filedialog = false;
     bool plotFlag = false;
@@ -415,7 +450,7 @@ int main(int, char**)
 
     std::vector<Node> Tree;
     // Tree.push_back(listFilesInDirectory(std::string("./test")));
-    Tree.push_back(listFilesInDirectory(std::string("C:\\programming\\gui\\src\\test")));
+    Tree.push_back(listFilesInDirectory(std::string("C:\\projects\\gui\\src\\test"), lastPath));
     
     // bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.086f, 0.086f, 0.086f, 1.00f);
@@ -459,7 +494,7 @@ int main(int, char**)
         ImGui::DockSpaceOverViewport();
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
         // if(show_filedialog) openFileDialog(&show_filedialog, nodes, parentCntr);
-        if(show_filedialog) openFileDialog(&show_filedialog, Tree);
+        if(show_filedialog) openFileDialog(&show_filedialog, Tree, lastPath);
         
         if (show_demo_window)
         {
@@ -479,12 +514,15 @@ int main(int, char**)
             
             if(ImGui::Button("Add Directory"))
                 addDirFlag = true;
+            ImGui::SameLine();
+            if(ImGui::Button("..."))
+                show_filedialog = true;
 
             if(addDirFlag)
             {
                 if (!(std::string(pathInputText).empty()))
                 {
-                    Tree.push_back(listFilesInDirectory(std::string(pathInputText)));
+                    Tree.push_back(listFilesInDirectory(std::string(pathInputText), lastPath));
                 }
                 addDirFlag = false;
             }
@@ -520,11 +558,12 @@ int main(int, char**)
                     // The first column will use the default _WidthStretch when ScrollX is Off and _WidthFixed when ScrollX is On
                     ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide);
                     ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 12.0f);
+                    // ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 12.0f);
                     ImGui::TableHeadersRow();
 
                     for (long unsigned int i = 0; i < Tree.size(); i++)
                     {
-                        Node::DisplayNodes(Tree[i], filter);
+                        Node::DisplayNodes(Tree[i], filter, Tree);
                     }
 
                     ImGui::EndTable();
@@ -613,25 +652,20 @@ int main(int, char**)
                         {
                             ImPlot::SetupAxes("x","y");
                             ImPlot::SetupFinish();
-                            // static float  frequency = 0.1f;
-                            // static float  amplitude = 0.5f;
-                            // static char*  title;
                             static char   titleInput[128];
                             static bool   titleFlag = false;
-                            static ImVec4 color     = ImVec4(1,1,0,1); //ImVec4(IMPLOT_AUTO_COL);
-                            static float  alpha     = 1.0f;
                             static bool   line      = true;
-                            static float  thickness = 1;
-
-                            static bool  markerFlag = false;
+                            // ImPlotStyle& style              = ImPlot::GetStyle();
+                            // ImVec4* colors                  = style.Colors;
+                            // static ImVec4 color; //     = ImVec4(IMPLOT_AUTO_COL); //ImVec4(1,1,0,1); 
+                            // static float  alpha     = 1.0f;
+                            // static bool   shaded    = false;
+                            
                             const ImPlotMarker marker[] = {ImPlotMarker_Circle, ImPlotMarker_Square, ImPlotMarker_Asterisk,
                                                            ImPlotMarker_Diamond, ImPlotMarker_Cross, ImPlotMarker_Plus};
                             const char* items[] = {"Circle", "Square", "Asterisk",
                                                    "Diamond", "Cross", "Plus"};
                             static int item_current = 0;
-                            static float mk_size = ImPlot::GetStyle().MarkerSize;
-                            static float mk_weight = ImPlot::GetStyle().MarkerWeight;
-                            // static bool   shaded    = false;
 
                             for (long unsigned int i = 0; i < Tree.size(); i++)
                             {
@@ -641,7 +675,7 @@ int main(int, char**)
                                     if(Tree[i].children[j].checkboxState == true)
                                     {
                                         // if (ImGui::Button("Set")
-                                        // ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, alpha);
+                                        // ImPlot::PushStyleColor(ImPlotCol_Line, Tree[i].children[j].curve.color);
                                         // title = (char*)Tree[i].children[j].pathName.c_str();
                                         // std::cout << title.size() << std::endl;
                                         // char arr[title.size() + 1]; 
@@ -652,7 +686,7 @@ int main(int, char**)
                                         double* y = &Tree[i].children[j].curve.y[0];
 
                                         ImPlot::SetNextLineStyle(Tree[i].children[j].curve.color, Tree[i].children[j].curve.thickness);
-                                        if (markerFlag)
+                                        if (Tree[i].children[j].curve.markerFlag)
                                         {
                                             ImPlot::SetNextMarkerStyle(Tree[i].children[j].curve.marker, Tree[i].children[j].curve.markerSize,
                                                                        IMPLOT_AUTO_COL, Tree[i].children[j].curve.markerWeight);
@@ -662,7 +696,9 @@ int main(int, char**)
                                         // Tree[i].children[j].curve.marker
                                         // Tree[i].children[j].curve.markerSize
                                         // Tree[i].children[j].curve.markerWeight
-                                                                                // ImPlot::PopStyleVar();
+                                        // ImPlot::PopStyleVar();
+
+                                        // ImPlot::PopStyleColor();
                                         if (ImPlot::BeginLegendPopup(Tree[i].children[j].pathName.c_str())) {
                                             // ImGui::SliderFloat("Frequency",&frequency,0,1,"%0.2f");
                                             // ImGui::SliderFloat("Amplitude",&amplitude,0,1,"%0.2f");
@@ -683,15 +719,25 @@ int main(int, char**)
                                                 // Tree[i].children[j].pathName = std::string(title);
                                             // color = IMPLOT_AUTO_COL;                                            
                                             ImGui::Separator();
+
+                                            // colors[ImPlotCol_Line]          = IMPLOT_AUTO_COL;
+                                            // ImPlot::NextColormapColor();
+                                            // Tree[i].children[j].curve.color.x = colors[ImPlotCol_Line].x;
+                                            // Tree[i].children[j].curve.color.y = colors[ImPlotCol_Line].y;
+                                            // Tree[i].children[j].curve.color.z = colors[ImPlotCol_Line].z;
+                                            // TODO: fix color editing in context menue
+                                            Tree[i].children[j].curve.color.w = 1;
+                                            
                                             ImGui::ColorEdit3("Color", &Tree[i].children[j].curve.color.x);
-                                            // ImPlot::SetNextLineStyle(color, thickness);
+                                            // ImPlot::PushStyleColor(ImPlotCol_Line, Tree[i].children[j].curve.color);
+                                            ImPlot::SetNextLineStyle(Tree[i].children[j].curve.color);
                                             // NOTE: transparency does nothing for lineplot
                                             // ImGui::SliderFloat("Transparency", &alpha, 0, 1, "%.2f");
                                             // ImGui::Checkbox("Line Plot", &marker);
                                             if (line) {
                                                 ImGui::SliderFloat("Thickness", &Tree[i].children[j].curve.thickness, 0.1, 10);
-                                                ImGui::Checkbox("Markers", &markerFlag);
-                                                if(markerFlag)
+                                                ImGui::Checkbox("Markers", &Tree[i].children[j].curve.markerFlag);
+                                                if(Tree[i].children[j].curve.markerFlag)
                                                 {
                                                     ImGui::SliderFloat("Marker Size", &Tree[i].children[j].curve.markerSize, 0, 10, "%.2f");
                                                     ImGui::SliderFloat("Marker Weight", &Tree[i].children[j].curve.markerWeight, 1, 10, "%.2f");
@@ -706,6 +752,7 @@ int main(int, char**)
 
                                                 // ImGui::Checkbox("Shaded",&shaded);
                                             }
+                                            // ImPlot::PopStyleColor();
                                             ImPlot::EndLegendPopup();
                                         }
                                         // else

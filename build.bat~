@@ -4,9 +4,9 @@ set OUT_DIR=..\build-win32
 set BIN_DIR=..\bin
 set OUT_EXE=main
 rem 
-set INCLUDES=/ID:\programming\gui\src\imgui-docking /ID:\programming\gui\src\ImGuiFileDialog\dirent /ID:\programming\gui\src\implot /ID:\programming\gui\src\imgui-docking\backends /ID:\programming\gui\src\lib\glfw\include /ID:\programming\gui\src\ImGuiFileDialog
-set LIBS=/LIBPATH:D:\programming\gui\src\lib\glfw\lib-vc2019 glfw3.lib opengl32.lib gdi32.lib shell32.lib
-set SOURCES=D:\programming\gui\src\main.cpp D:\programming\gui\src\imgui-docking\backends\imgui_impl_glfw.cpp D:\programming\gui\src\imgui-docking\backends\imgui_impl_opengl2.cpp D:\programming\gui\src\imgui-docking\imgui*.cpp D:\programming\gui\src\implot\implot*.cpp D:\programming\gui\src\ImGuiFileDialog\ImGuiFileDialog.cpp
+set INCLUDES=/IC:\projects\gui\src\imgui-docking /IC:\projects\gui\src\ImGuiFileDialog\dirent /IC:\projects\gui\src\implot /IC:\projects\gui\src\imgui-docking\backends /IC:\projects\gui\src\lib\glfw\include /IC:\projects\gui\src\ImGuiFileDialog
+set LIBS=/LIBPATH:C:\projects\gui\src\lib\glfw\lib-vc2019 glfw3.lib opengl32.lib gdi32.lib shell32.lib
+set SOURCES=C:\projects\gui\src\main.cpp C:\projects\gui\src\imgui-docking\backends\imgui_impl_glfw.cpp C:\projects\gui\src\imgui-docking\backends\imgui_impl_opengl2.cpp C:\projects\gui\src\imgui-docking\imgui*.cpp C:\projects\gui\src\implot\implot*.cpp C:\projects\gui\src\ImGuiFileDialog\ImGuiFileDialog.cpp
 IF NOT EXIST %OUT_DIR% mkdir %OUT_DIR%
 cl /nologo /Zi /O2 /Ob3 /GL /LTCG /MD /EHsc %INCLUDES% %SOURCES% /Fe%OUT_DIR%/%OUT_EXE%.exe /Fo%OUT_DIR%/ /link %LIBS%
 

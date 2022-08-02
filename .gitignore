@@ -9,3 +9,4 @@ imgui.ini
 *.ini
 run.bat
 build.bat
+shell.bat

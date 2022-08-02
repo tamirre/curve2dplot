@@ -14,7 +14,7 @@ yum install glfw-devel
 yum install mesa-libGL
 yum install mesa-libGL-devel
 yum install centos-release-scl-rh
-yum install devtool-10-toolchain
+yum install devtoolset-10-toolchain
 
 in die bashrc:
 source scl_source enable devtoolset-10
