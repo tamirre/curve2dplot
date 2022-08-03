@@ -10,6 +10,9 @@
 // HACK: so that stdint.h does not get included twice...
 #define _MSC_STDINT_H_
 
+// NOTE: Disabling command window spawn when running the .exe
+#pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
+
 #include "math.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
