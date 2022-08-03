@@ -261,24 +261,24 @@ Curve readCurve(std::string filePath)
     return curve;
 }
 
-Node listFilesInDirectory(std::string path, std::string &lastPath)
+Node listFilesInDirectory(std::string path, std::string &lastPath, int &dirCntr)
 {
-    int id = 0;
-    Node root = {path, ".", id, -1, false, NULL};
-    std::vector<Node> children;
     DIR* dir;
     struct dirent * ent;
     struct stat st;
-
+    
     if ((dir = opendir(path.c_str())) != NULL)
     {
+        int id = 0;
+        Node root = {path, ".", dirCntr++, -1, false, NULL};
+        std::vector<Node> children;
         while ((ent = readdir(dir)) != NULL)
         {
             if(ent->d_type == DT_REG)
             {
 
                 std::string filePath = path + std::string("/") + ent->d_name;
-                lastPath = filePath;
+                lastPath = path + std::string("/");
 // #if _WIN32
                 std::string filePathName = tokenize(path) + std::string("/") + ent->d_name;
 // #elif __linux__
@@ -295,15 +295,19 @@ Node listFilesInDirectory(std::string path, std::string &lastPath)
             // } else if(dp->d_type == DT_DIR) {
             }
         }
+        // TODO: std::move?
+        root.children = children;
+
+        // printTree(&root);
+        closedir(dir);
+        return root;
     } else {
-
+        Node root = {"Invalid Directory", ".", -1, -1, false, NULL};
+        std::vector<Node> children;
+        root.children =  children;
+        return root;
     }
-    closedir(dir);
-    // TODO: std::move?
-    root.children = children;
-
-    // printTree(&root);
-    return root;
+    
 }
 
 // void printNode(const Node *node) {
@@ -322,7 +326,7 @@ Node listFilesInDirectory(std::string path, std::string &lastPath)
 //     }
 // }
 
-void openFileDialog(bool *p_open, std::vector<Node> &Tree, std::string &lastPath)
+void openFileDialog(bool *p_open, std::vector<Node> &Tree, std::string &lastPath, int &dirCntr)
 {
     ImVec2 maxSize = ImVec2(800.0, 400.0);  // The full display area
     ImVec2 minSize = ImVec2(400.0, 200.0); // Half the display area
@@ -354,7 +358,11 @@ void openFileDialog(bool *p_open, std::vector<Node> &Tree, std::string &lastPath
                     addNode = false;
             }
             if(addNode)
-                Tree.push_back(listFilesInDirectory(filePathName, lastPath));
+            {
+                Node dirRoot = listFilesInDirectory(filePathName, lastPath, dirCntr);
+                if(dirRoot.children.size() != 0)
+                    Tree.push_back(dirRoot);
+            }
         }
 
         // close
@@ -450,10 +458,11 @@ int main(int, char**)
     bool show_filedialog = false;
     bool plotFlag = false;
     bool addDirFlag = false;
+    int dirCntr = 0;
 
     std::vector<Node> Tree;
     // Tree.push_back(listFilesInDirectory(std::string("./test")));
-    Tree.push_back(listFilesInDirectory(std::string("C:\\projects\\gui\\src\\test"), lastPath));
+    Tree.push_back(listFilesInDirectory(std::string("C:\\projects\\gui\\src\\test"), lastPath, dirCntr));
     
     // bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.086f, 0.086f, 0.086f, 1.00f);
@@ -497,7 +506,7 @@ int main(int, char**)
         ImGui::DockSpaceOverViewport();
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
         // if(show_filedialog) openFileDialog(&show_filedialog, nodes, parentCntr);
-        if(show_filedialog) openFileDialog(&show_filedialog, Tree, lastPath);
+        if(show_filedialog) openFileDialog(&show_filedialog, Tree, lastPath, dirCntr);
         
         if (show_demo_window)
         {
@@ -525,7 +534,9 @@ int main(int, char**)
             {
                 if (!(std::string(pathInputText).empty()))
                 {
-                    Tree.push_back(listFilesInDirectory(std::string(pathInputText), lastPath));
+                    Node dirRoot = listFilesInDirectory(std::string(pathInputText), lastPath, dirCntr);
+                    if(dirRoot.children.size() != 0)
+                        Tree.push_back(dirRoot);
                 }
                 addDirFlag = false;
             }
@@ -657,7 +668,7 @@ int main(int, char**)
                             ImPlot::SetupFinish();
                             static char   titleInput[128];
                             static bool   titleFlag = false;
-                            static bool   line      = true;
+                            // static bool   line      = true;
                             // ImPlotStyle& style              = ImPlot::GetStyle();
                             // ImVec4* colors                  = style.Colors;
                             // static ImVec4 color; //     = ImVec4(IMPLOT_AUTO_COL); //ImVec4(1,1,0,1); 
@@ -683,7 +694,6 @@ int main(int, char**)
                                         // std::cout << title.size() << std::endl;
                                         // char arr[title.size() + 1]; 
                                         // std::strcpy(arr, title.c_str()); 
-
                                         
                                         double* x = &Tree[i].children[j].curve.x[0];
                                         double* y = &Tree[i].children[j].curve.y[0];
@@ -694,11 +704,7 @@ int main(int, char**)
                                             ImPlot::SetNextMarkerStyle(Tree[i].children[j].curve.marker, Tree[i].children[j].curve.markerSize,
                                                                        IMPLOT_AUTO_COL, Tree[i].children[j].curve.markerWeight);
                                         }
-                                        // Tree[i].children[j].curve.color
-                                        // Tree[i].children[j].curve.thickness
-                                        // Tree[i].children[j].curve.marker
-                                        // Tree[i].children[j].curve.markerSize
-                                        // Tree[i].children[j].curve.markerWeight
+
                                         // ImPlot::PopStyleVar();
 
                                         // ImPlot::PopStyleColor();
@@ -733,29 +739,31 @@ int main(int, char**)
                                             
                                             ImGui::ColorEdit3("Color", &Tree[i].children[j].curve.color.x);
                                             // ImPlot::PushStyleColor(ImPlotCol_Line, Tree[i].children[j].curve.color);
-                                            ImPlot::SetNextLineStyle(Tree[i].children[j].curve.color);
+                                            // ImPlot::SetNextLineStyle(Tree[i].children[j].curve.color);
+                                            ImPlot::SetNextLineStyle(Tree[i].children[j].curve.color, Tree[i].children[j].curve.thickness);
                                             // NOTE: transparency does nothing for lineplot
                                             // ImGui::SliderFloat("Transparency", &alpha, 0, 1, "%.2f");
                                             // ImGui::Checkbox("Line Plot", &marker);
-                                            if (line) {
-                                                ImGui::SliderFloat("Thickness", &Tree[i].children[j].curve.thickness, 0.1, 10);
-                                                ImGui::Checkbox("Markers", &Tree[i].children[j].curve.markerFlag);
-                                                if(Tree[i].children[j].curve.markerFlag)
-                                                {
-                                                    ImGui::SliderFloat("Marker Size", &Tree[i].children[j].curve.markerSize, 0, 10, "%.2f");
-                                                    ImGui::SliderFloat("Marker Weight", &Tree[i].children[j].curve.markerWeight, 1, 10, "%.2f");
+                                            // if (line) {
+                                            ImGui::SliderFloat("Thickness", &Tree[i].children[j].curve.thickness, 0.1, 10);
+                                            ImGui::Checkbox("Markers", &Tree[i].children[j].curve.markerFlag);
+                                            if(Tree[i].children[j].curve.markerFlag)
+                                            {
+                                                ImGui::SliderFloat("Marker Size", &Tree[i].children[j].curve.markerSize, 0, 10, "%.2f");
+                                                ImGui::SliderFloat("Marker Weight", &Tree[i].children[j].curve.markerWeight, 1, 10, "%.2f");
 
-                                                    // for (int m = 0; m < ImPlotMarker_COUNT; ++m) {
-                                                    //     ImGui::PushID(m);
-                                                    //     ImPlot::SetNextMarkerStyle(m, mk_size, IMPLOT_AUTO_COL, mk_weight);
-                                                    // }
-                                                    ImGui::Combo("combo", &item_current, items, IM_ARRAYSIZE(items));
-                                                    Tree[i].children[j].curve.marker = marker[item_current];
-                                                }
+                                                // for (int m = 0; m < ImPlotMarker_COUNT; ++m) {
+                                                //     ImGui::PushID(m);
+                                                //     ImPlot::SetNextMarkerStyle(m, mk_size, IMPLOT_AUTO_COL, mk_weight);
+                                                // }
+                                                ImGui::Combo("combo", &item_current, items, IM_ARRAYSIZE(items));
+                                                Tree[i].children[j].curve.marker = marker[item_current];
+                                            }
 
                                                 // ImGui::Checkbox("Shaded",&shaded);
-                                            }
+                                            // }
                                             // ImPlot::PopStyleColor();
+
                                             ImPlot::EndLegendPopup();
                                         }
                                         // else
