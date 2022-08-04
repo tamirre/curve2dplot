@@ -123,7 +123,7 @@ struct Node {
     std::vector<Node> children;
     Curve curve;
 
-    static void DisplayNodes(Node &root, ImGuiTextFilter filter, std::vector<Node> &Tree)
+    static void DisplayNodes(Node &root, ImGuiTextFilter filter, std::vector<Node> &Tree, int &dirCntr)
     {
         const bool is_folder = (root.children.size() > 0);
         if (is_folder)
@@ -145,6 +145,12 @@ struct Node {
                 if (ImGui::Button("Remove"))
                 {
                     Tree.erase(Tree.begin() + root.Index);
+                    dirCntr = 0;
+                    for(int i = 0; i < Tree.size(); i++)
+                    {
+                        Tree[i].Index = dirCntr++;
+                    }
+
                     ImGui::CloseCurrentPopup();
                 }
 
@@ -184,7 +190,7 @@ struct Node {
 
                 for (long unsigned int j = 0; j < root.children.size(); j++)
                 {
-                    DisplayNodes(root.children[j], filter, Tree);
+                    DisplayNodes(root.children[j], filter, Tree, dirCntr);
                 }
 
                 ImGui::TreePop();
@@ -577,7 +583,7 @@ int main(int, char**)
 
                     for (long unsigned int i = 0; i < Tree.size(); i++)
                     {
-                        Node::DisplayNodes(Tree[i], filter, Tree);
+                        Node::DisplayNodes(Tree[i], filter, Tree, dirCntr);
                     }
 
                     ImGui::EndTable();
