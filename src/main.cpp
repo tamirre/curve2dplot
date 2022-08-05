@@ -11,7 +11,9 @@
 #define _MSC_STDINT_H_
 
 // NOTE: Disabling command window spawn when running the .exe
+#if _WIN32
 #pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
+#endif
 
 #include "math.h"
 #include "imgui.h"
@@ -104,7 +106,7 @@ struct Curve
     std::vector<double> x;
     std::vector<double> y;
     // Options:
-    ImVec4 color = ImVec4(IMPLOT_AUTO_COL);
+    ImVec4 color; // = ImVec4(IMPLOT_AUTO_COL);
     float thickness = 1.0f;
     bool markerFlag = false;
     ImPlotMarker marker;
@@ -146,7 +148,7 @@ struct Node {
                 {
                     Tree.erase(Tree.begin() + root.Index);
                     dirCntr = 0;
-                    for(int i = 0; i < Tree.size(); i++)
+                    for(long unsigned int i = 0; i < Tree.size(); i++)
                     {
                         Tree[i].Index = dirCntr++;
                     }
@@ -295,7 +297,7 @@ Node listFilesInDirectory(std::string path, std::string &lastPath, int &dirCntr)
 
                 // Node child = {ent->d_name, filePathName, id++, size, false, &root};
                 Node child = {ent->d_name, filePath, id++, size, false, &root};
-                child.curve = readCurve(filePath);
+                // child.curve = readCurve(filePath);
                 
                 children.push_back(child);
             // } else if(dp->d_type == DT_DIR) {
@@ -308,9 +310,11 @@ Node listFilesInDirectory(std::string path, std::string &lastPath, int &dirCntr)
         closedir(dir);
         return root;
     } else {
-        Node root = {"Invalid Directory", ".", -1, -1, false, NULL};
+        Node root = {"Invalid Directory", ".",  dirCntr++, -1, false, NULL};
         std::vector<Node> children;
-        root.children =  children;
+        Node childDummy = {"", ".", 0, 0, false, NULL};
+        children.push_back(childDummy);
+        root.children = children;
         return root;
     }
     
@@ -356,7 +360,7 @@ void openFileDialog(bool *p_open, std::vector<Node> &Tree, std::string &lastPath
             // auto selection = ImGuiFileDialog::Instance()->GetSelection(); // multiselection
             // std::cout << typeid(selection).name() << std::endl;
 
-            // Check wether curve directory already exists in tree
+            // Check whether curve directory already exists in the tree and add it
             bool addNode = true;
             for(long unsigned int i = 0; i < Tree.size(); i++)
             {
@@ -375,19 +379,7 @@ void openFileDialog(bool *p_open, std::vector<Node> &Tree, std::string &lastPath
         ImGuiFileDialog::Instance()->Close();
         *p_open=false;
     }
-
-    // return nodes;
 }
-
-void showMainMenu()
-{
-
-}
-
-// void appendPlotList()
-// {
-
-// }
 
 int main(int, char**)
 {
@@ -459,16 +451,23 @@ int main(int, char**)
     // IM_ASSERT(font != NULL);
  
     // Our state
+    static ImVector<int> active_tabs;
+    static int next_tab_id = 0;
     static std::string lastPath = ".";
     bool show_demo_window = true;
     bool show_filedialog = false;
     bool plotFlag = false;
     bool addDirFlag = false;
     int dirCntr = 0;
-
+    
     std::vector<Node> Tree;
+    active_tabs.push_back(next_tab_id++);
     // Tree.push_back(listFilesInDirectory(std::string("./test")));
-    Tree.push_back(listFilesInDirectory(std::string("C:\\projects\\gui\\src\\test"), lastPath, dirCntr));
+    // Tree.push_back(listFilesInDirectory(std::string("C:\\projects\\gui\\src\\test"), lastPath, dirCntr));
+    Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE/first-crv"), lastPath, dirCntr));
+    Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE-ric/first-crv"), lastPath, dirCntr));
+    Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE-ric-par2/first-crv"), lastPath, dirCntr));
+    Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE-ric-par4/first-crv"), lastPath, dirCntr));
     
     // bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.086f, 0.086f, 0.086f, 1.00f);
@@ -599,8 +598,7 @@ int main(int, char**)
             ImGui::Begin("Plot");
 
             static bool show_trailing_button = true;
-            static ImVector<int> active_tabs;
-            static int next_tab_id = 0;
+
 
             // TabItemButton() and Leading/Trailing flags are distinct features which we will demo together.
             // (It is possible to submit regular tabs with Leading/Trailing flags, or TabItemButton tabs without Leading/Trailing flags...
@@ -674,6 +672,8 @@ int main(int, char**)
                             ImPlot::SetupFinish();
                             static char   titleInput[128];
                             static bool   titleFlag = false;
+                            static int    numCurves = 0;
+                            // static bool   colorEdit = false;
                             // static bool   line      = true;
                             // ImPlotStyle& style              = ImPlot::GetStyle();
                             // ImVec4* colors                  = style.Colors;
@@ -700,11 +700,21 @@ int main(int, char**)
                                         // std::cout << title.size() << std::endl;
                                         // char arr[title.size() + 1]; 
                                         // std::strcpy(arr, title.c_str()); 
-                                        
+                                        if(Tree[i].children[j].curve.x.size() == 0)
+                                        {
+                                            Tree[i].children[j].curve = readCurve(Tree[i].children[j].pathName);
+                                            Tree[i].children[j].curve.color = ImPlot::GetColormapColor(Tree[i].children[j].Index);
+                                            Tree[i].children[j].curve.color.w = 1.0f;
+
+                                        }
+                                            // Tree[i].children[j].curve.color.w = 1.0f;
+                                            
                                         double* x = &Tree[i].children[j].curve.x[0];
                                         double* y = &Tree[i].children[j].curve.y[0];
-
+                                        // Tree[i].children[j].curve.color = IMPLOT_AUTO_COL;
+                                        // ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, Tree[i].children[j].curve.color.w);
                                         ImPlot::SetNextLineStyle(Tree[i].children[j].curve.color, Tree[i].children[j].curve.thickness);
+                                        // ImPlot::PopStyleVar();
                                         if (Tree[i].children[j].curve.markerFlag)
                                         {
                                             ImPlot::SetNextMarkerStyle(Tree[i].children[j].curve.marker, Tree[i].children[j].curve.markerSize,
@@ -741,14 +751,36 @@ int main(int, char**)
                                             // Tree[i].children[j].curve.color.y = colors[ImPlotCol_Line].y;
                                             // Tree[i].children[j].curve.color.z = colors[ImPlotCol_Line].z;
                                             // TODO: fix color editing in context menue
-                                            Tree[i].children[j].curve.color.w = 1;
+                                            // Tree[i].children[j].curve.color.w = 1;
                                             
-                                            ImGui::ColorEdit3("Color", &Tree[i].children[j].curve.color.x);
+                                            // ImGui::ColorEdit3("Color", &Tree[i].children[j].curve.color.x);
+                                            // Tree[i].children[j].curve.color.w = 1.0f;
+                                            ImGui::ColorEdit4("##Color", &Tree[i].children[j].curve.color.x);
+                                            // {
+                                                // Tree[i].children[j].curve.color = ImPlot::GetColormapColor(Tree[i].children[j].Index);
+                                                // Tree[i].children[j].curve.color.w = 1.0f;
+                                                // colorEdit = false;
+                                            // }
+
+                                            // if(Tree[i].children[j].curve.color.w < 0)
+                                            // if(colorEdit)
+                                            // {
+                                                // Tree[i].children[j].curve.color = IMPLOT_AUTO_COL;
+
+                                             
+                                            // } // else {
+                                            //     Tree[i].children[j].curve.color = IMPLOT_AUTO_COL;
+                                            // }
+                                            // , ImGuiColorEditFlags_NoInputs
+                                            // std::cout << "r = " << Tree[i].children[j].curve.color.x << " ";
+                                            // std::cout << "g = " << Tree[i].children[j].curve.color.y << " ";
+                                            // std::cout << "b = " << Tree[i].children[j].curve.color.z << " ";
+                                            // std::cout << "a = " << Tree[i].children[j].curve.color.w << " " << std::endl;
                                             // ImPlot::PushStyleColor(ImPlotCol_Line, Tree[i].children[j].curve.color);
                                             // ImPlot::SetNextLineStyle(Tree[i].children[j].curve.color);
+
                                             ImPlot::SetNextLineStyle(Tree[i].children[j].curve.color, Tree[i].children[j].curve.thickness);
-                                            // NOTE: transparency does nothing for lineplot
-                                            // ImGui::SliderFloat("Transparency", &alpha, 0, 1, "%.2f");
+
                                             // ImGui::Checkbox("Line Plot", &marker);
                                             // if (line) {
                                             ImGui::SliderFloat("Thickness", &Tree[i].children[j].curve.thickness, 0.1, 10);
