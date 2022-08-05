@@ -464,6 +464,7 @@ int main(int, char**)
     active_tabs.push_back(next_tab_id++);
     // Tree.push_back(listFilesInDirectory(std::string("./test")));
     // Tree.push_back(listFilesInDirectory(std::string("C:\\projects\\gui\\src\\test"), lastPath, dirCntr));
+    // Tree.push_back(listFilesInDirectory(std::string("C:/Users/tamir/Desktop"), lastPath, dirCntr));
     Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE/first-crv"), lastPath, dirCntr));
     Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE-ric/first-crv"), lastPath, dirCntr));
     Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE-ric-par2/first-crv"), lastPath, dirCntr));
@@ -672,7 +673,7 @@ int main(int, char**)
                             ImPlot::SetupFinish();
                             static char   titleInput[128];
                             static bool   titleFlag = false;
-                            static int    numCurves = 0;
+                            static int numCurves = 0;
                             // static bool   colorEdit = false;
                             // static bool   line      = true;
                             // ImPlotStyle& style              = ImPlot::GetStyle();
@@ -691,6 +692,7 @@ int main(int, char**)
                             {
                                 for (long unsigned int j = 0; j < Tree[i].children.size(); j++)
                                 {
+                                    
                                     // std::string functionName = std::to_string(Tree.children[i].Name);
                                     if(Tree[i].children[j].checkboxState == true)
                                     {
@@ -703,10 +705,12 @@ int main(int, char**)
                                         if(Tree[i].children[j].curve.x.size() == 0)
                                         {
                                             Tree[i].children[j].curve = readCurve(Tree[i].children[j].pathName);
-                                            Tree[i].children[j].curve.color = ImPlot::GetColormapColor(Tree[i].children[j].Index);
+                                            Tree[i].children[j].curve.color = ImPlot::GetColormapColor(numCurves++);
+                                            // Tree[i].children[j].curve.color = ImPlot::GetColormapColor(Tree[i].children[j].Index);
                                             Tree[i].children[j].curve.color.w = 1.0f;
 
                                         }
+
                                             // Tree[i].children[j].curve.color.w = 1.0f;
                                             
                                         double* x = &Tree[i].children[j].curve.x[0];
