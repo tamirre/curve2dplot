@@ -34,6 +34,7 @@
 #include <vector>
 #include <stdlib.h>
 #include <fstream>
+#include <sstream>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -248,22 +249,26 @@ Curve readCurve(std::string filePath)
     std::string line;
     double x,y;
     file.open(filePath);
+    
     if (file.is_open())
     {
-        while(getline(file,line))
+        while (std::getline(file, line))
         {
-            // Skip comments marked by # character
-            if (line[0] == '#') continue;
-            file >> x >> y;
-            curve.x.push_back(x);
-            curve.y.push_back(y);
-        }    
+            if (line[0] != '#')
+            {
+                std::istringstream iss(line);
+                iss >> x >> y;
+                curve.x.push_back(x);
+                curve.y.push_back(y);
+            }
+        }
+        file.close();
     }
     else std::cout << "Unable to open file"; 
-    file.close();
 
+    // std::cout << "SIZE: " << curve.x.size() << std::endl;
     // std::cout.precision(8);
-    // for(int i = 0; i<curve.x.size(); i++)
+    // for(int i = 0; i < curve.x.size(); i++)
     //     std::cout << "X: " << std::fixed << curve.x[i] << ", Y: " << std::fixed << curve.y[i] << std::endl;
     
     return curve;
@@ -465,10 +470,13 @@ int main(int, char**)
     // Tree.push_back(listFilesInDirectory(std::string("./test")));
     // Tree.push_back(listFilesInDirectory(std::string("C:\\projects\\gui\\src\\test"), lastPath, dirCntr));
     // Tree.push_back(listFilesInDirectory(std::string("C:/Users/tamir/Desktop"), lastPath, dirCntr));
-    Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE/first-crv"), lastPath, dirCntr));
-    Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE-ric/first-crv"), lastPath, dirCntr));
-    Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE-ric-par2/first-crv"), lastPath, dirCntr));
-    Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE-ric-par4/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE/first-crv"), lastPath, dirCntr));
+    Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_blend/first-crv"), lastPath, dirCntr));
+    Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_konst/first-crv"), lastPath, dirCntr));
+    Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_noEM/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE-ric/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE-ric-par2/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE-ric-par4/first-crv"), lastPath, dirCntr));
     
     // bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.086f, 0.086f, 0.086f, 1.00f);
@@ -817,7 +825,7 @@ int main(int, char**)
                                         ImPlot::PlotLine(Tree[i].children[j].pathName.c_str(),
                                                          x,
                                                          y,
-                                                         Tree[i].children[j].curve.x.size()-1); // length-1 for correct size
+                                                         Tree[i].children[j].curve.x.size()); 
                                     }
                                 }
                             }
