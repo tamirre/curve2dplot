@@ -530,6 +530,7 @@ int main(int, char**)
         }
         // NAVIGATION WINDOW SECTION
         {
+            ImGui::SetNextWindowSize(ImVec2(400, 700), ImGuiCond_FirstUseEver);
             ImGui::Begin("Navigation");                          // Create a window called "Hello, world!" and append into it.
             
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -604,6 +605,7 @@ int main(int, char**)
 
         // PLOT WINDOW SECTION
         {
+            ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
             ImGui::Begin("Plot");
 
             static bool show_trailing_button = true;
