@@ -480,16 +480,11 @@ int main(int, char**)
     
     std::vector<Node> Tree;
     active_tabs.push_back(next_tab_id++);
-    // Tree.push_back(listFilesInDirectory(std::string("./test")));
-    // Tree.push_back(listFilesInDirectory(std::string("C:\\projects\\gui\\src\\test"), lastPath, dirCntr));
-    // Tree.push_back(listFilesInDirectory(std::string("C:/Users/tamir/Desktop"), lastPath, dirCntr));
-    // Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE/first-crv"), lastPath, dirCntr));
+
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/Lagerring/first-crv"), lastPath, dirCntr));
     Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_blend/first-crv"), lastPath, dirCntr));
     Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_konst/first-crv"), lastPath, dirCntr));
     Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_noEM/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE-ric/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE-ric-par2/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE-ric-par4/first-crv"), lastPath, dirCntr));
     
     // bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.086f, 0.086f, 0.086f, 1.00f);
@@ -574,11 +569,11 @@ int main(int, char**)
             HelpMarker(
                 "Input search string here."
             );
-            ImGui::SameLine();
-            if(ImGui::Button("Plot"))
-            {
-                plotFlag = true;
-            }
+            // ImGui::SameLine();
+            // if(ImGui::Button("Plot"))
+            // {
+            //     plotFlag = true;
+            // }
 
             {
                 ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
@@ -690,10 +685,13 @@ int main(int, char**)
                     {
 
                         const ImVec2 plotSize = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
+                        
                         if(ImPlot::BeginPlot("", plotSize))
                         {
                             ImPlot::SetupAxes("x","y");
-                            ImPlot::SetupFinish();
+                            // ImPlot::SetupAxisLimits();
+                            // ImPlot::SetupAxesLimits();
+                            // ImPlot::SetupFinish();
                             static char   titleInput[128];
                             static bool   titleFlag = false;
                             static int numCurves = 0;
@@ -840,7 +838,7 @@ int main(int, char**)
                                         ImPlot::PlotLine(Tree[i].children[j].pathName.c_str(),
                                                          x,
                                                          y,
-                                                         Tree[i].children[j].curve.x.size()); 
+                                                         Tree[i].children[j].curve.x.size());
                                     }
                                 }
                             }
