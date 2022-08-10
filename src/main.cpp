@@ -101,6 +101,7 @@ std::string tokenize(std::string s)
     return s.substr(start, start-end);
 }
 
+
 struct Curve
 {
     // Data:
@@ -126,7 +127,59 @@ struct Node {
     std::vector<Node> children;
     Curve curve;
 
-    static void DisplayNodes(Node &root, ImGuiTextFilter filter, std::vector<Node> &Tree, int &dirCntr)
+    static Node listFilesInDirectory(std::string path, std::string &lastPath, int &dirCntr)
+    {
+        DIR* dir;
+        struct dirent * ent;
+        struct stat st;
+
+        if ((dir = opendir(path.c_str())) != NULL)
+        {
+            int id = 0;
+            Node root = {path, ".", dirCntr++, -1, false, NULL};
+            std::vector<Node> children;
+            while ((ent = readdir(dir)) != NULL)
+            {
+                if(ent->d_type == DT_REG)
+                {
+
+                    std::string filePath = path + std::string("/") + ent->d_name;
+                    lastPath = path + std::string("/");
+    // #if _WIN32
+                    std::string filePathName = tokenize(path) + std::string("/") + ent->d_name;
+    // #elif __linux__
+    //                 std::string filePathName = tokenize(path, "/") + std::string("/") + ent->d_name;
+    // #endif
+                    stat(filePath.c_str(), &st);
+                    int size = st.st_size;
+
+                    // Node child = {ent->d_name, filePathName, id++, size, false, &root};
+                    Node child = {ent->d_name, filePath, id++, size, false, &root};
+                    // child.curve = readCurve(filePath);
+
+                    children.push_back(child);
+                // } else if(dp->d_type == DT_DIR) {
+                }
+            }
+            // TODO: std::move?
+            root.children = children;
+
+            // printTree(&root);
+            closedir(dir);
+            return root;
+        } else {
+            Node root = {"Invalid Directory", ".",  dirCntr++, -1, false, NULL};
+            std::vector<Node> children;
+            Node childDummy = {"", ".", 0, 0, false, NULL};
+            children.push_back(childDummy);
+            root.children = children;
+            return root;
+        }
+
+    }
+
+    
+    static void DisplayNodes(Node &root, ImGuiTextFilter filter, std::vector<Node> &Tree, std::string &lastPath, int &dirCntr)
     {
         const bool is_folder = (root.children.size() > 0);
         if (is_folder)
@@ -134,7 +187,7 @@ struct Node {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             bool open = ImGui::TreeNodeEx(root.Name.c_str(), ImGuiTreeNodeFlags_SpanFullWidth |
-                                                              ImGuiTreeNodeFlags_DefaultOpen);
+                                                             ImGuiTreeNodeFlags_DefaultOpen);
 
             if (ImGui::BeginPopupContextItem(root.Name.c_str())) // <-- use last item id as popup id
             {
@@ -142,7 +195,18 @@ struct Node {
                 ImGui::Text("Action:");
                 if (ImGui::Button("Reload"))
                 {
-                    // reloadFile();
+                    int tmpIndex = root.Index;
+                    Node dirRoot = Node::listFilesInDirectory(root.Name, lastPath, tmpIndex);
+                    Tree.erase(Tree.begin() + root.Index);
+                    dirCntr = 0;
+                    for(long unsigned int i = 0; i < Tree.size(); i++)
+                    {
+                        Tree[i].Index = dirCntr++;
+                    }
+                    Tree.insert(Tree.begin() + (--tmpIndex), dirRoot);
+                    dirCntr++;
+
+                    ImGui::CloseCurrentPopup();
                 }
                  
                 if (ImGui::Button("Remove"))
@@ -193,7 +257,7 @@ struct Node {
 
                 for (long unsigned int j = 0; j < root.children.size(); j++)
                 {
-                    DisplayNodes(root.children[j], filter, Tree, dirCntr);
+                    Node::DisplayNodes(root.children[j], filter, Tree, lastPath, dirCntr);
                 }
 
                 ImGui::TreePop();
@@ -274,57 +338,6 @@ Curve readCurve(std::string filePath)
     return curve;
 }
 
-Node listFilesInDirectory(std::string path, std::string &lastPath, int &dirCntr)
-{
-    DIR* dir;
-    struct dirent * ent;
-    struct stat st;
-    
-    if ((dir = opendir(path.c_str())) != NULL)
-    {
-        int id = 0;
-        Node root = {path, ".", dirCntr++, -1, false, NULL};
-        std::vector<Node> children;
-        while ((ent = readdir(dir)) != NULL)
-        {
-            if(ent->d_type == DT_REG)
-            {
-
-                std::string filePath = path + std::string("/") + ent->d_name;
-                lastPath = path + std::string("/");
-// #if _WIN32
-                std::string filePathName = tokenize(path) + std::string("/") + ent->d_name;
-// #elif __linux__
-//                 std::string filePathName = tokenize(path, "/") + std::string("/") + ent->d_name;
-// #endif
-                stat(filePath.c_str(), &st);
-                int size = st.st_size;
-
-                // Node child = {ent->d_name, filePathName, id++, size, false, &root};
-                Node child = {ent->d_name, filePath, id++, size, false, &root};
-                // child.curve = readCurve(filePath);
-                
-                children.push_back(child);
-            // } else if(dp->d_type == DT_DIR) {
-            }
-        }
-        // TODO: std::move?
-        root.children = children;
-
-        // printTree(&root);
-        closedir(dir);
-        return root;
-    } else {
-        Node root = {"Invalid Directory", ".",  dirCntr++, -1, false, NULL};
-        std::vector<Node> children;
-        Node childDummy = {"", ".", 0, 0, false, NULL};
-        children.push_back(childDummy);
-        root.children = children;
-        return root;
-    }
-    
-}
-
 // void printNode(const Node *node) {
 //     if (node) {
 //         std::cout << "Name: " << node->Name << std::endl;
@@ -374,7 +387,7 @@ void openFileDialog(bool *p_open, std::vector<Node> &Tree, std::string &lastPath
             }
             if(addNode)
             {
-                Node dirRoot = listFilesInDirectory(filePathName, lastPath, dirCntr);
+                Node dirRoot = Node::listFilesInDirectory(filePathName, lastPath, dirCntr);
                 if(dirRoot.children.size() != 0)
                     Tree.push_back(dirRoot);
             }
@@ -471,9 +484,9 @@ int main(int, char**)
     // Tree.push_back(listFilesInDirectory(std::string("C:\\projects\\gui\\src\\test"), lastPath, dirCntr));
     // Tree.push_back(listFilesInDirectory(std::string("C:/Users/tamir/Desktop"), lastPath, dirCntr));
     // Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE/first-crv"), lastPath, dirCntr));
-    Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_blend/first-crv"), lastPath, dirCntr));
-    Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_konst/first-crv"), lastPath, dirCntr));
-    Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_noEM/first-crv"), lastPath, dirCntr));
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_blend/first-crv"), lastPath, dirCntr));
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_konst/first-crv"), lastPath, dirCntr));
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_noEM/first-crv"), lastPath, dirCntr));
     // Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE-ric/first-crv"), lastPath, dirCntr));
     // Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE-ric-par2/first-crv"), lastPath, dirCntr));
     // Tree.push_back(listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE-ric-par4/first-crv"), lastPath, dirCntr));
@@ -549,7 +562,7 @@ int main(int, char**)
             {
                 if (!(std::string(pathInputText).empty()))
                 {
-                    Node dirRoot = listFilesInDirectory(std::string(pathInputText), lastPath, dirCntr);
+                    Node dirRoot = Node::listFilesInDirectory(std::string(pathInputText), lastPath, dirCntr);
                     if(dirRoot.children.size() != 0)
                         Tree.push_back(dirRoot);
                 }
@@ -592,7 +605,7 @@ int main(int, char**)
 
                     for (long unsigned int i = 0; i < Tree.size(); i++)
                     {
-                        Node::DisplayNodes(Tree[i], filter, Tree, dirCntr);
+                        Node::DisplayNodes(Tree[i], filter, Tree, lastPath, dirCntr);
                     }
 
                     ImGui::EndTable();
