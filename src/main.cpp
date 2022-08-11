@@ -422,7 +422,7 @@ int main(int, char**)
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);
-    // glfwSwapInterval(1); // Enable vsync
+    glfwSwapInterval(1); // Enable vsync
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -479,9 +479,13 @@ int main(int, char**)
     static ImVector<int> active_tabs;
     static int next_tab_id = 0;
     static std::string lastPath = ".";
-    bool show_demo_window = true;
+    bool show_demo_window = false;
     bool show_filedialog = false;
+    bool show_styleEditor = false;
+    bool show_helpWindow = false;
+    bool quit_application = false;
     bool plotFlag = false;
+    bool redock_all = false;
     bool addDirFlag = false;
     int dirCntr = 0;
     
@@ -519,16 +523,31 @@ int main(int, char**)
         {
             if (ImGui::BeginMenu("File"))
             {
-                if (ImGui::MenuItem("Open Directory...", "CTRL+O", &show_filedialog))
-                {
-                    // openFileDialog(&show_filedialog, nodes, parentCntr);
-                }
-                // TODO: implement quit option
-                // if (ImGui::MenuItem("Quit...", "Alt+F4", &quit_application))
-                // {
-                    
-                // }
+                ImGui::MenuItem("Open Directory...", "CTRL+O", &show_filedialog);
 
+                // TODO: implement recent directories list
+                if(ImGui::BeginMenu("Open Recent...", "CTRL+O"))
+                {
+                    ImGui::MenuItem("test1-crv");
+                    ImGui::MenuItem("test2-crv");
+                    ImGui::MenuItem("test3-crv");
+
+                    ImGui::EndMenu();
+                }
+                // TODO: implement quit
+                ImGui::MenuItem("Quit...", "Alt+F4", &quit_application);
+                
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Options"))
+            {
+                ImGui::MenuItem("Edit Style...", "CTRL+L", &show_styleEditor);
+                ImGui::MenuItem("Debug...", "CTRL+D", &show_demo_window);
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("About"))
+            {
+                ImGui::MenuItem("Help...", "CTRL+H", &show_helpWindow);
                 ImGui::EndMenu();
             }
             ImGui::EndMainMenuBar();
@@ -536,10 +555,23 @@ int main(int, char**)
 
         // Make docspace in main window
         ImGui::DockSpaceOverViewport();
-        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-        // if(show_filedialog) openFileDialog(&show_filedialog, nodes, parentCntr);
+
         if(show_filedialog) openFileDialog(&show_filedialog, Tree, lastPath, dirCntr);
-        
+        if (show_styleEditor)
+        {
+            ImGui::Begin("Style Editor", &show_styleEditor);
+            ImGui::ShowStyleEditor();
+            ImGui::End();
+        }
+        if (show_helpWindow)
+        {
+            ImGui::SetNextWindowSize(ImVec2(400, 100), ImGuiCond_Always);
+            ImGui::Begin("Help", &show_helpWindow);
+            ImGui::Text("For bug reports send a detailed description to:\n\ntamir.dombrovskij@ist-aachen.com");
+            ImGui::End();
+        }
+                
+        // Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).        
         if (show_demo_window)
         {
             ImGui::ShowDemoWindow(&show_demo_window);
@@ -557,7 +589,7 @@ int main(int, char**)
             ImGui::InputTextWithHint("##", "Absolute path to directory...", pathInputText, IM_ARRAYSIZE(pathInputText));
             ImGui::SameLine();
             
-            if(ImGui::Button("Add Directory"))
+            if(ImGui::Button("Add Dir"))
                 addDirFlag = true;
             ImGui::SameLine();
             if(ImGui::Button("..."))
@@ -579,7 +611,11 @@ int main(int, char**)
             HelpMarker(
                 "Input search string here."
             );
-            
+
+            plotFlag = ImGui::Button("Add Plot Tab");
+            ImGui::SameLine();
+            redock_all = ImGui::Button("Redock all");
+
             {
                 ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
                 // NOTE(Tamir:) Create child such that the scroll bar is only scrolling the file browser, not the entire window
@@ -641,8 +677,8 @@ int main(int, char**)
             // if (ImGui::CheckboxFlags("ImGuiTabBarFlags_FittingPolicyScroll", &tab_bar_flags, ImGuiTabBarFlags_FittingPolicyScroll))
                 // tab_bar_flags &= ~(ImGuiTabBarFlags_FittingPolicyMask_ ^ ImGuiTabBarFlags_FittingPolicyScroll);
 
-            if (ImGui::BeginTabBar("MyTabBar", tab_bar_flags))
-            {
+            // if (ImGui::BeginTabBar("MyTabBar", tab_bar_flags))
+            // {
                 // Demo a Leading TabItemButton(): click the "?" button to open a menu
                 // if (show_leading_button)
                 //     if (ImGui::TabItemButton("?", ImGuiTabItemFlags_Leading | ImGuiTabItemFlags_NoTooltip))
@@ -655,18 +691,37 @@ int main(int, char**)
 
                 // Demo Trailing Tabs: click the "+" button to add a new tab (in your app you may want to use a font icon instead of the "+")
                 // Note that we submit it before the regular tabs, but because of the ImGuiTabItemFlags_Trailing flag it will always appear at the end.
-                if (show_trailing_button)
-                    if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip))
-                        active_tabs.push_back(next_tab_id++); // Add new tab
-                            
+
+                // if (show_trailing_button)
+                    // if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip))
+                //         active_tabs.push_back(next_tab_id++); // Add new tab
+
+                // Create a DockSpace node where any window can be docked
+                ImGuiID dockspace_id = ImGui::GetID("PlotDockSpace");
+                ImGui::DockSpace(dockspace_id);
+
+                // if (show_trailing_button)
+                //     if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip))
+                //         active_tabs.push_back(next_tab_id++); // Add new tab
+                
+                // Submit tab item on add tab button press
+                if (plotFlag)
+                {
+                    active_tabs.push_back(next_tab_id++);
+                    plotFlag = false;
+                }
+                
                 // Submit our regular tabs
-                for (int n = 0; n < active_tabs.Size; )
+                for (int n = 0; n < active_tabs.Size;)
                 {
                     bool open = true;
                     char name[16];
                     snprintf(name, IM_ARRAYSIZE(name), "%04d", active_tabs[n]);
-                    
-                    if (ImGui::BeginTabItem(name, &open, ImGuiTabItemFlags_None))
+
+                    ImGui::SetNextWindowDockID(dockspace_id, redock_all ? ImGuiCond_Always : ImGuiCond_FirstUseEver);
+
+                    // if (ImGui::BeginTabItem(name, &open, ImGuiTabItemFlags_None))
+                    if (ImGui::Begin(name, &open))
                     {
                         const ImVec2 plotSize = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
 
@@ -727,7 +782,7 @@ int main(int, char**)
                         }
 
                         // Plotting in second pass (because we need to calculate axis limits beforehand)
-                        if(ImPlot::BeginPlot("", plotSize))
+                        if(ImPlot::BeginPlot("##", plotSize))
                         {
                             ImPlot::SetupAxes("x", "y");
                             if(rangesChanged)
@@ -796,8 +851,7 @@ int main(int, char**)
                             
                             ImPlot::EndPlot();
                         }
-                         
-                        ImGui::EndTabItem();
+                        // ImGui::End();
                     }
 
                     if (!open)
@@ -809,10 +863,11 @@ int main(int, char**)
                     {
                         n++;
                     }
+                    ImGui::End();
                 }
 
-                ImGui::EndTabBar();
-            }
+            //     ImGui::EndTabBar();
+            // }
  
             ImGui::End();
         }
