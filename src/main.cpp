@@ -107,6 +107,11 @@ struct Curve
     // Data:
     std::vector<double> x;
     std::vector<double> y;
+    double xmin;
+    double xmax;
+    double ymin;
+    double ymax;
+
     // Options:
     ImVec4 color; // = ImVec4(IMPLOT_AUTO_COL);
     float thickness = 1.0f;
@@ -330,6 +335,12 @@ Curve readCurve(std::string filePath)
     }
     else std::cout << "Unable to open file"; 
 
+    curve.xmax = *std::max_element(curve.x.begin(), curve.x.end());
+    curve.xmin = *std::min_element(curve.x.begin(), curve.x.end());
+
+    curve.ymax = *std::max_element(curve.y.begin(), curve.y.end());
+    curve.ymin = *std::min_element(curve.y.begin(), curve.y.end());
+    
     // std::cout << "SIZE: " << curve.x.size() << std::endl;
     // std::cout.precision(8);
     // for(int i = 0; i < curve.x.size(); i++)
@@ -402,10 +413,6 @@ void openFileDialog(bool *p_open, std::vector<Node> &Tree, std::string &lastPath
 int main(int, char**)
 {
 
-  
-    // for(int i = 0; i < 4; i++)
-        // cout <<  << " ";
- 
     // Setup window
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
@@ -415,7 +422,7 @@ int main(int, char**)
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(1); // Enable vsync
+    // glfwSwapInterval(1); // Enable vsync
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -479,8 +486,11 @@ int main(int, char**)
     int dirCntr = 0;
     
     std::vector<Node> Tree;
+
+    // Initialize one plot tab
     active_tabs.push_back(next_tab_id++);
 
+    // HACK(Tamir): adding some dirs hardcoded for testing
     Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/Lagerring/first-crv"), lastPath, dirCntr));
     Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_blend/first-crv"), lastPath, dirCntr));
     Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_konst/first-crv"), lastPath, dirCntr));
@@ -569,12 +579,7 @@ int main(int, char**)
             HelpMarker(
                 "Input search string here."
             );
-            // ImGui::SameLine();
-            // if(ImGui::Button("Plot"))
-            // {
-            //     plotFlag = true;
-            // }
-
+            
             {
                 ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
                 // NOTE(Tamir:) Create child such that the scroll bar is only scrolling the file browser, not the entire window
@@ -595,7 +600,6 @@ int main(int, char**)
                     // The first column will use the default _WidthStretch when ScrollX is Off and _WidthFixed when ScrollX is On
                     ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide);
                     ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 12.0f);
-                    // ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 12.0f);
                     ImGui::TableHeadersRow();
 
                     for (long unsigned int i = 0; i < Tree.size(); i++)
@@ -617,15 +621,12 @@ int main(int, char**)
             ImGui::Begin("Plot");
 
             static bool show_trailing_button = true;
-
+            // static bool show_leading_button = true;
 
             // TabItemButton() and Leading/Trailing flags are distinct features which we will demo together.
             // (It is possible to submit regular tabs with Leading/Trailing flags, or TabItemButton tabs without Leading/Trailing flags...
             // but they tend to make more sense together)
-            // static bool show_leading_button = true;
 
-            // ImGui::Checkbox("Show Leading TabItemButton()", &show_leading_button);
-            // ImGui::Checkbox("Show Trailing TabItemButton()", &show_trailing_button);
 
             // Expose some other flags which are useful to showcase how they interact with Leading/Trailing tabs
             static ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_AutoSelectNewTabs |
@@ -657,22 +658,6 @@ int main(int, char**)
                 if (show_trailing_button)
                     if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip))
                         active_tabs.push_back(next_tab_id++); // Add new tab
-                        // appendPlotList(plotList);
-
-                // Submit tab item on plot button press
-                if (plotFlag)
-                {
-                //     // Curve tmp;
-                //     // // srand(time(0));
-                //     // // static float xs1[tmp_size], ys1[tmp_size];
-                //     // for (int i = 0; i < tmp.x.size(); ++i) {
-                //     //     tmp.x[i] = i * 1.0f/(tmp.x.size()-1);
-                //     //     tmp.y[i] = next_tab_id;
-                //     // }
-                //     plotList.push_back(tmp);
-                    active_tabs.push_back(next_tab_id++);
-                    plotFlag = false;
-                }
                             
                 // Submit our regular tabs
                 for (int n = 0; n < active_tabs.Size; )
@@ -683,76 +668,89 @@ int main(int, char**)
                     
                     if (ImGui::BeginTabItem(name, &open, ImGuiTabItemFlags_None))
                     {
-
                         const ImVec2 plotSize = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
-                        
+
+                        static char   titleInput[128];
+                        static bool   titleFlag = false;
+                        static bool   rangesChanged = false;
+                        static int numCurves = 0;
+                        static double xmin = 0;
+                        static double xmax = 0;
+                        static double ymin = 0;
+                        static double ymax = 0;
+
+                        const ImPlotMarker marker[] = {ImPlotMarker_Circle, ImPlotMarker_Square, ImPlotMarker_Asterisk,
+                                                       ImPlotMarker_Diamond, ImPlotMarker_Cross, ImPlotMarker_Plus};
+                        const char* items[] = {"Circle", "Square", "Asterisk",
+                                               "Diamond", "Cross", "Plus"};
+                        static int item_current = 0;
+
+                        // Setup state, colors and axis limits in first pass
+                        for (long unsigned int i = 0; i < Tree.size(); i++)
+                        {
+                            for (long unsigned int j = 0; j < Tree[i].children.size(); j++)
+                            {
+
+                                if(Tree[i].children[j].checkboxState == true)
+                                {
+
+                                    if(Tree[i].children[j].curve.x.size() == 0)
+                                    {
+                                        Tree[i].children[j].curve = readCurve(Tree[i].children[j].pathName);
+                                        Tree[i].children[j].curve.color = ImPlot::GetColormapColor(numCurves++);
+                                        Tree[i].children[j].curve.color.w = 1.0f;
+
+                                    }
+                                    
+                                    if (Tree[i].children[j].curve.xmin < xmin)
+                                    {
+                                        xmin = Tree[i].children[j].curve.xmin;
+                                        rangesChanged = true;
+                                    }
+                                    if (Tree[i].children[j].curve.xmax > xmax)
+                                    {
+                                        xmax = Tree[i].children[j].curve.xmax;
+                                        rangesChanged = true;
+                                    }
+                                    if (Tree[i].children[j].curve.ymin < ymin)
+                                    {
+                                        ymin = Tree[i].children[j].curve.ymin;
+                                        rangesChanged = true;
+                                    }
+                                    if (Tree[i].children[j].curve.ymax > ymax)
+                                    {
+                                        ymax = Tree[i].children[j].curve.ymax;
+                                        rangesChanged = true;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Plotting in second pass (because we need to calculate axis limits beforehand)
                         if(ImPlot::BeginPlot("", plotSize))
                         {
-                            ImPlot::SetupAxes("x","y");
-                            // ImPlot::SetupAxisLimits();
-                            // ImPlot::SetupAxesLimits();
-                            // ImPlot::SetupFinish();
-                            static char   titleInput[128];
-                            static bool   titleFlag = false;
-                            static int numCurves = 0;
-                            // static bool   colorEdit = false;
-                            // static bool   line      = true;
-                            // ImPlotStyle& style              = ImPlot::GetStyle();
-                            // ImVec4* colors                  = style.Colors;
-                            // static ImVec4 color; //     = ImVec4(IMPLOT_AUTO_COL); //ImVec4(1,1,0,1); 
-                            // static float  alpha     = 1.0f;
-                            // static bool   shaded    = false;
-                            
-                            const ImPlotMarker marker[] = {ImPlotMarker_Circle, ImPlotMarker_Square, ImPlotMarker_Asterisk,
-                                                           ImPlotMarker_Diamond, ImPlotMarker_Cross, ImPlotMarker_Plus};
-                            const char* items[] = {"Circle", "Square", "Asterisk",
-                                                   "Diamond", "Cross", "Plus"};
-                            static int item_current = 0;
-
+                            ImPlot::SetupAxes("x", "y");
+                            if(rangesChanged)
+                            {
+                                ImPlot::SetupAxesLimits(xmin, xmax, ymin, ymax, ImPlotCond_Always);
+                                rangesChanged = false;
+                            }
                             for (long unsigned int i = 0; i < Tree.size(); i++)
                             {
                                 for (long unsigned int j = 0; j < Tree[i].children.size(); j++)
                                 {
-                                    
-                                    // std::string functionName = std::to_string(Tree.children[i].Name);
                                     if(Tree[i].children[j].checkboxState == true)
                                     {
-                                        // if (ImGui::Button("Set")
-                                        // ImPlot::PushStyleColor(ImPlotCol_Line, Tree[i].children[j].curve.color);
-                                        // title = (char*)Tree[i].children[j].pathName.c_str();
-                                        // std::cout << title.size() << std::endl;
-                                        // char arr[title.size() + 1]; 
-                                        // std::strcpy(arr, title.c_str()); 
-                                        if(Tree[i].children[j].curve.x.size() == 0)
-                                        {
-                                            Tree[i].children[j].curve = readCurve(Tree[i].children[j].pathName);
-                                            Tree[i].children[j].curve.color = ImPlot::GetColormapColor(numCurves++);
-                                            // Tree[i].children[j].curve.color = ImPlot::GetColormapColor(Tree[i].children[j].Index);
-                                            Tree[i].children[j].curve.color.w = 1.0f;
 
-                                        }
-
-                                            // Tree[i].children[j].curve.color.w = 1.0f;
-                                            
-                                        double* x = &Tree[i].children[j].curve.x[0];
-                                        double* y = &Tree[i].children[j].curve.y[0];
-                                        // Tree[i].children[j].curve.color = IMPLOT_AUTO_COL;
-                                        // ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, Tree[i].children[j].curve.color.w);
                                         ImPlot::SetNextLineStyle(Tree[i].children[j].curve.color, Tree[i].children[j].curve.thickness);
-                                        // ImPlot::PopStyleVar();
+
                                         if (Tree[i].children[j].curve.markerFlag)
                                         {
                                             ImPlot::SetNextMarkerStyle(Tree[i].children[j].curve.marker, Tree[i].children[j].curve.markerSize,
                                                                        IMPLOT_AUTO_COL, Tree[i].children[j].curve.markerWeight);
                                         }
 
-                                        // ImPlot::PopStyleVar();
-
-                                        // ImPlot::PopStyleColor();
                                         if (ImPlot::BeginLegendPopup(Tree[i].children[j].pathName.c_str())) {
-                                            // ImGui::SliderFloat("Frequency",&frequency,0,1,"%0.2f");
-                                            // ImGui::SliderFloat("Amplitude",&amplitude,0,1,"%0.2f");
-                                            // ImGui::TextInput("Title",&plotTitle);
         
                                             ImGui::InputTextWithHint("##", "Title (Legend)", titleInput, IM_ARRAYSIZE(titleInput));
                                             ImGui::SameLine();
@@ -765,75 +763,28 @@ int main(int, char**)
                                                 Tree[i].children[j].pathName = titleInput;
                                                 titleFlag = false;
                                             }
-                                            // if (title != "")
-                                                // Tree[i].children[j].pathName = std::string(title);
-                                            // color = IMPLOT_AUTO_COL;                                            
+
                                             ImGui::Separator();
 
-                                            // colors[ImPlotCol_Line]          = IMPLOT_AUTO_COL;
-                                            // ImPlot::NextColormapColor();
-                                            // Tree[i].children[j].curve.color.x = colors[ImPlotCol_Line].x;
-                                            // Tree[i].children[j].curve.color.y = colors[ImPlotCol_Line].y;
-                                            // Tree[i].children[j].curve.color.z = colors[ImPlotCol_Line].z;
-                                            // TODO: fix color editing in context menue
-                                            // Tree[i].children[j].curve.color.w = 1;
-                                            
-                                            // ImGui::ColorEdit3("Color", &Tree[i].children[j].curve.color.x);
-                                            // Tree[i].children[j].curve.color.w = 1.0f;
                                             ImGui::ColorEdit4("##Color", &Tree[i].children[j].curve.color.x);
-                                            // {
-                                                // Tree[i].children[j].curve.color = ImPlot::GetColormapColor(Tree[i].children[j].Index);
-                                                // Tree[i].children[j].curve.color.w = 1.0f;
-                                                // colorEdit = false;
-                                            // }
-
-                                            // if(Tree[i].children[j].curve.color.w < 0)
-                                            // if(colorEdit)
-                                            // {
-                                                // Tree[i].children[j].curve.color = IMPLOT_AUTO_COL;
-
-                                             
-                                            // } // else {
-                                            //     Tree[i].children[j].curve.color = IMPLOT_AUTO_COL;
-                                            // }
-                                            // , ImGuiColorEditFlags_NoInputs
-                                            // std::cout << "r = " << Tree[i].children[j].curve.color.x << " ";
-                                            // std::cout << "g = " << Tree[i].children[j].curve.color.y << " ";
-                                            // std::cout << "b = " << Tree[i].children[j].curve.color.z << " ";
-                                            // std::cout << "a = " << Tree[i].children[j].curve.color.w << " " << std::endl;
-                                            // ImPlot::PushStyleColor(ImPlotCol_Line, Tree[i].children[j].curve.color);
-                                            // ImPlot::SetNextLineStyle(Tree[i].children[j].curve.color);
-
                                             ImPlot::SetNextLineStyle(Tree[i].children[j].curve.color, Tree[i].children[j].curve.thickness);
 
-                                            // ImGui::Checkbox("Line Plot", &marker);
-                                            // if (line) {
                                             ImGui::SliderFloat("Thickness", &Tree[i].children[j].curve.thickness, 0.1, 10);
                                             ImGui::Checkbox("Markers", &Tree[i].children[j].curve.markerFlag);
                                             if(Tree[i].children[j].curve.markerFlag)
                                             {
                                                 ImGui::SliderFloat("Marker Size", &Tree[i].children[j].curve.markerSize, 0, 10, "%.2f");
                                                 ImGui::SliderFloat("Marker Weight", &Tree[i].children[j].curve.markerWeight, 1, 10, "%.2f");
-
-                                                // for (int m = 0; m < ImPlotMarker_COUNT; ++m) {
-                                                //     ImGui::PushID(m);
-                                                //     ImPlot::SetNextMarkerStyle(m, mk_size, IMPLOT_AUTO_COL, mk_weight);
-                                                // }
                                                 ImGui::Combo("combo", &item_current, items, IM_ARRAYSIZE(items));
                                                 Tree[i].children[j].curve.marker = marker[item_current];
                                             }
 
-                                                // ImGui::Checkbox("Shaded",&shaded);
-                                            // }
-                                            // ImPlot::PopStyleColor();
-
                                             ImPlot::EndLegendPopup();
                                         }
-                                        // else
-                                        // {
-                                        //     color = IMPLOT_AUTO_COL; 
-                                        // }
-                                        
+
+                                        double* x = &Tree[i].children[j].curve.x[0];
+                                        double* y = &Tree[i].children[j].curve.y[0];
+
                                         // TODO: does PlotLine convert to float?
                                         ImPlot::PlotLine(Tree[i].children[j].pathName.c_str(),
                                                          x,
