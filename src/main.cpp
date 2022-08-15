@@ -101,6 +101,11 @@ std::string tokenize(std::string s)
     return s.substr(start, start-end);
 }
 
+struct Tab
+{
+    int Index;
+    std::vector<int> activePlots;
+};
 
 struct Curve
 {
@@ -476,11 +481,12 @@ int main(int, char**)
     // IM_ASSERT(font != NULL);
  
     // Our state
-    static ImVector<int> active_tabs;
-    static int next_tab_id = 0;
+    static ImVector<Tab> activeTabs;
+    static int nextTabId = 0;
     static std::string lastPath = ".";
     bool show_demo_window = false;
     bool show_filedialog = false;
+    bool show_scandialog = false;
     bool show_styleEditor = false;
     bool show_helpWindow = false;
     bool quit_application = false;
@@ -492,7 +498,8 @@ int main(int, char**)
     std::vector<Node> Tree;
 
     // Initialize one plot tab
-    active_tabs.push_back(next_tab_id++);
+    Tab defaultTab = {nextTabId++};
+    activeTabs.push_back(defaultTab);
 
     // HACK(Tamir): adding some dirs hardcoded for testing
     Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/Lagerring/first-crv"), lastPath, dirCntr));
@@ -524,7 +531,7 @@ int main(int, char**)
             if (ImGui::BeginMenu("File"))
             {
                 ImGui::MenuItem("Open Directory...", "CTRL+O", &show_filedialog);
-
+                ImGui::MenuItem("Scan for *-crv directories...", "CTRL+F", &show_scandialog);
                 // TODO: implement recent directories list
                 if(ImGui::BeginMenu("Open Recent...", "CTRL+O"))
                 {
@@ -707,24 +714,28 @@ int main(int, char**)
                 // Submit tab item on add tab button press
                 if (plotFlag)
                 {
-                    active_tabs.push_back(next_tab_id++);
+                    Tab nextTab = {nextTabId++};
+                    activeTabs.push_back(nextTab);
                     plotFlag = false;
                 }
-                
+
                 // Submit our regular tabs
-                for (int n = 0; n < active_tabs.Size;)
+                for (int n = 0; n < activeTabs.Size;)
                 {
                     bool open = true;
                     char name[16];
-                    snprintf(name, IM_ARRAYSIZE(name), "%04d", active_tabs[n]);
-
+                    snprintf(name, IM_ARRAYSIZE(name), "%04d", activeTabs[n].Index);
+                    
                     ImGui::SetNextWindowDockID(dockspace_id, redock_all ? ImGuiCond_Always : ImGuiCond_FirstUseEver);
 
+                    // activeTabs[n].activePlots.clear();
+                    
                     // if (ImGui::BeginTabItem(name, &open, ImGuiTabItemFlags_None))
                     if (ImGui::Begin(name, &open))
                     {
                         const ImVec2 plotSize = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
 
+                        // static std::vector<int> activePlots;
                         static char   titleInput[128];
                         static bool   titleFlag = false;
                         static bool   rangesChanged = false;
@@ -748,7 +759,7 @@ int main(int, char**)
 
                                 if(Tree[i].children[j].checkboxState == true)
                                 {
-
+                                    // activeTabs[n].activePlots.push_back(Tree[i].children[j].Index);
                                     if(Tree[i].children[j].curve.x.size() == 0)
                                     {
                                         Tree[i].children[j].curve = readCurve(Tree[i].children[j].pathName);
@@ -780,7 +791,7 @@ int main(int, char**)
                                 }
                             }
                         }
-
+                                
                         // Plotting in second pass (because we need to calculate axis limits beforehand)
                         if(ImPlot::BeginPlot("##", plotSize))
                         {
@@ -790,11 +801,22 @@ int main(int, char**)
                                 ImPlot::SetupAxesLimits(xmin, xmax, ymin, ymax, ImPlotCond_Always);
                                 rangesChanged = false;
                             }
-                            for (long unsigned int i = 0; i < Tree.size(); i++)
+                            
+                            for(long unsigned int i = 0; i < Tree.size(); i++)
                             {
-                                for (long unsigned int j = 0; j < Tree[i].children.size(); j++)
+                                for(long unsigned int j = 0; j < Tree[i].children.size(); j++)
                                 {
-                                    if(Tree[i].children[j].checkboxState == true)
+                                    // bool inTab = false;
+                                    // Regenerate the checkBoxState for the active tab
+                                    // for(long unsigned int i = 0; i < activeTabs[n].activePlots.size(); i++)
+                                    // {
+                                    //     if(Tree[i].children[j].Index == activeTabs[n].activePlots[i])
+                                    //     {
+                                    //         inTab = true;
+                                    //     }
+                                    // }
+                                    
+                                    if(Tree[i].children[j].checkboxState == true) // && inTab
                                     {
 
                                         ImPlot::SetNextLineStyle(Tree[i].children[j].curve.color, Tree[i].children[j].curve.thickness);
@@ -856,8 +878,7 @@ int main(int, char**)
 
                     if (!open)
                     {
-                        // plotList.erase(plotList.Data + n);
-                        active_tabs.erase(active_tabs.Data + n);
+                        activeTabs.erase(activeTabs.Data + n);
                     }
                     else
                     {
