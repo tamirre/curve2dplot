@@ -104,7 +104,7 @@ std::string tokenize(std::string s)
 struct Tab
 {
     int Index;
-    std::vector<int> activePlots;
+    // std::vector<int> activePlots;
 };
 
 struct Curve
@@ -503,9 +503,11 @@ int main(int, char**)
 
     // HACK(Tamir): adding some dirs hardcoded for testing
     Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/Lagerring/first-crv"), lastPath, dirCntr));
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/Lagerring/first-crv-old"), lastPath, dirCntr));
     Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_blend/first-crv"), lastPath, dirCntr));
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_konst/first-crv"), lastPath, dirCntr));
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_noEM/first-crv"), lastPath, dirCntr));
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_blend/first-crv-old"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_konst/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_noEM/first-crv"), lastPath, dirCntr));
     
     // bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.086f, 0.086f, 0.086f, 1.00f);
@@ -735,7 +737,6 @@ int main(int, char**)
                     {
                         const ImVec2 plotSize = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
 
-                        // static std::vector<int> activePlots;
                         static char   titleInput[128];
                         static bool   titleFlag = false;
                         static bool   rangesChanged = false;
@@ -808,15 +809,15 @@ int main(int, char**)
                                 {
                                     // bool inTab = false;
                                     // Regenerate the checkBoxState for the active tab
-                                    // for(long unsigned int i = 0; i < activeTabs[n].activePlots.size(); i++)
+                                    // for(long unsigned int k = 0; k < activeTabs[n].activePlots.size(); k++)
                                     // {
-                                    //     if(Tree[i].children[j].Index == activeTabs[n].activePlots[i])
+                                    //     if(Tree[i].children[j].Index == activeTabs[n].activePlots[k])
                                     //     {
                                     //         inTab = true;
                                     //     }
                                     // }
                                     
-                                    if(Tree[i].children[j].checkboxState == true) // && inTab
+                                    if(Tree[i].children[j].checkboxState == true) //  && inTab
                                     {
 
                                         ImPlot::SetNextLineStyle(Tree[i].children[j].curve.color, Tree[i].children[j].curve.thickness);
@@ -867,6 +868,7 @@ int main(int, char**)
                                                          x,
                                                          y,
                                                          Tree[i].children[j].curve.x.size());
+
                                     }
                                 }
                             }
@@ -876,7 +878,8 @@ int main(int, char**)
                         // ImGui::End();
                     }
 
-                    if (!open)
+                    
+                    if(!open)
                     {
                         activeTabs.erase(activeTabs.Data + n);
                     }
@@ -884,6 +887,7 @@ int main(int, char**)
                     {
                         n++;
                     }
+                    
                     ImGui::End();
                 }
 
