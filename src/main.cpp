@@ -104,7 +104,7 @@ std::string tokenize(std::string s)
 struct Tab
 {
     int Index;
-    // std::vector<int> activePlots;
+    std::vector<int> activePlots;
 };
 
 struct Curve
@@ -492,6 +492,7 @@ int main(int, char**)
     bool quit_application = false;
     bool plotFlag = false;
     bool redock_all = false;
+    bool reset_plots = false;
     bool addDirFlag = false;
     int dirCntr = 0;
     
@@ -624,7 +625,8 @@ int main(int, char**)
             plotFlag = ImGui::Button("Add Plot Tab");
             ImGui::SameLine();
             redock_all = ImGui::Button("Redock all");
-
+            reset_plots = ImGui::Button("Reset all Plots");
+            
             {
                 ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
                 // NOTE(Tamir:) Create child such that the scroll bar is only scrolling the file browser, not the entire window
@@ -709,6 +711,9 @@ int main(int, char**)
                 ImGuiID dockspace_id = ImGui::GetID("PlotDockSpace");
                 ImGui::DockSpace(dockspace_id);
 
+                // Keep track of the last focussed tab
+                static int lastFocussedTab;
+                                        
                 // if (show_trailing_button)
                 //     if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip))
                 //         active_tabs.push_back(next_tab_id++); // Add new tab
@@ -727,20 +732,49 @@ int main(int, char**)
                     bool open = true;
                     char name[16];
                     snprintf(name, IM_ARRAYSIZE(name), "%04d", activeTabs[n].Index);
-                    
+
+                    // Set dockID to make tab dockable
                     ImGui::SetNextWindowDockID(dockspace_id, redock_all ? ImGuiCond_Always : ImGuiCond_FirstUseEver);
 
-                    // activeTabs[n].activePlots.clear();
+                    // if (lastFocussedTab == activeTabs[n].Index)
+                    // {
+                    //     for (long unsigned int i = 0; i < Tree.size(); i++)
+                    //     {
+                    //         for (long unsigned int j = 0; j < Tree[i].children.size(); j++)
+                    //         {
+                    //             for(long unsigned int k = 0; k < activeTabs[n].activePlots.size(); k++)
+                    //             {
+                    //                 if(Tree[i].children[j].Index == activeTabs[n].activePlots[k])
+                    //                 {
+                    //                     Tree[i].children[j].checkboxState = true;
+                    //                 }
+                    //             }
+                    //         }
+                    //     }
+                    // }
+                    activeTabs[n].activePlots.clear();
                     
                     // if (ImGui::BeginTabItem(name, &open, ImGuiTabItemFlags_None))
                     if (ImGui::Begin(name, &open))
                     {
+                        // TODO: Reactivate once the state of the checkboxes is saved correctly
+                        // if((ImGui::IsItemFocused() || activeTabs.Size == 1) && reset_plots)
+                        // {
+                        //     for (long unsigned int i = 0; i < Tree.size(); i++)
+                        //     {
+                        //         for (long unsigned int j = 0; j < Tree[i].children.size(); j++)
+                        //         {
+                        //             Tree[i].children[j].checkboxState = false;
+                        //         }
+                        //     }
+                        // }
+                        
                         const ImVec2 plotSize = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
 
                         static char   titleInput[128];
                         static bool   titleFlag = false;
                         static bool   rangesChanged = false;
-                        static int numCurves = 0;
+                        static int    numCurves = 0;
                         static double xmin = 0;
                         static double xmax = 0;
                         static double ymin = 0;
@@ -751,16 +785,27 @@ int main(int, char**)
                         const char* items[] = {"Circle", "Square", "Asterisk",
                                                "Diamond", "Cross", "Plus"};
                         static int item_current = 0;
-
+                           
                         // Setup state, colors and axis limits in first pass
                         for (long unsigned int i = 0; i < Tree.size(); i++)
                         {
                             for (long unsigned int j = 0; j < Tree[i].children.size(); j++)
                             {
-
+                                
                                 if(Tree[i].children[j].checkboxState == true)
                                 {
-                                    // activeTabs[n].activePlots.push_back(Tree[i].children[j].Index);
+                                    bool indexNotSavedYet = true;
+                                    for(long unsigned int k = 0; k < activeTabs[n].activePlots.size(); k++)
+                                    {
+                                        if(Tree[i].children[j].Index == activeTabs[n].activePlots[k])
+                                        {
+                                            indexNotSavedYet = false;
+                                        }
+                                    }
+                                    if(lastFocussedTab == activeTabs[n].Index  && indexNotSavedYet)
+                                    {
+                                        activeTabs[n].activePlots.push_back(Tree[i].children[j].Index);
+                                    }
                                     if(Tree[i].children[j].curve.x.size() == 0)
                                     {
                                         Tree[i].children[j].curve = readCurve(Tree[i].children[j].pathName);
@@ -796,6 +841,17 @@ int main(int, char**)
                         // Plotting in second pass (because we need to calculate axis limits beforehand)
                         if(ImPlot::BeginPlot("##", plotSize))
                         {
+                            // ImGui::BulletText(
+                            //     "Tab Index = %d\n"
+                            //     "Active Plots (size) = %d\n"
+                            //     "IsItemFocused() = %d\n"
+                            //     "Last focussed Tab = %d\n",
+                            //     activeTabs[n].Index,
+                            //     activeTabs[n].activePlots.size(),
+                            //     ImGui::IsItemFocused(),
+                            //     lastFocussedTab
+                            // );
+
                             ImPlot::SetupAxes("x", "y");
                             if(rangesChanged)
                             {
@@ -807,17 +863,19 @@ int main(int, char**)
                             {
                                 for(long unsigned int j = 0; j < Tree[i].children.size(); j++)
                                 {
-                                    // bool inTab = false;
-                                    // Regenerate the checkBoxState for the active tab
-                                    // for(long unsigned int k = 0; k < activeTabs[n].activePlots.size(); k++)
-                                    // {
-                                    //     if(Tree[i].children[j].Index == activeTabs[n].activePlots[k])
-                                    //     {
-                                    //         inTab = true;
-                                    //     }
-                                    // }
-                                    
-                                    if(Tree[i].children[j].checkboxState == true) //  && inTab
+                                    bool inTab = false;
+                                    if(lastFocussedTab == activeTabs[n].Index)
+                                    {
+                                        for(long unsigned int k = 0; k < activeTabs[n].activePlots.size(); k++)
+                                        {
+                                            if(Tree[i].children[j].Index == activeTabs[n].activePlots[k])
+                                            {
+
+                                                inTab = true;
+                                            }
+                                        }
+                                    }                                    
+                                    if(Tree[i].children[j].checkboxState == true && inTab) 
                                     {
 
                                         ImPlot::SetNextLineStyle(Tree[i].children[j].curve.color, Tree[i].children[j].curve.thickness);
@@ -875,10 +933,13 @@ int main(int, char**)
                             
                             ImPlot::EndPlot();
                         }
-                        // ImGui::End();
+                        // Track the last focussed tab to add plots to correct tab
+                        if(ImGui::IsItemFocused())
+                        {
+                            lastFocussedTab = activeTabs[n].Index;
+                        }
                     }
-
-                    
+                
                     if(!open)
                     {
                         activeTabs.erase(activeTabs.Data + n);
