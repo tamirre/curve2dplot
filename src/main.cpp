@@ -758,16 +758,16 @@ int main(int, char**)
                     if (ImGui::Begin(name, &open))
                     {
                         // TODO: Reactivate once the state of the checkboxes is saved correctly
-                        // if((ImGui::IsItemFocused() || activeTabs.Size == 1) && reset_plots)
-                        // {
-                        //     for (long unsigned int i = 0; i < Tree.size(); i++)
-                        //     {
-                        //         for (long unsigned int j = 0; j < Tree[i].children.size(); j++)
-                        //         {
-                        //             Tree[i].children[j].checkboxState = false;
-                        //         }
-                        //     }
-                        // }
+                        if(lastFocussedTab == activeTabs[n].Index && reset_plots)
+                        {
+                            for (long unsigned int i = 0; i < Tree.size(); i++)
+                            {
+                                for (long unsigned int j = 0; j < Tree[i].children.size(); j++)
+                                {
+                                    Tree[i].children[j].checkboxState = false;
+                                }
+                            }
+                        }
                         
                         const ImVec2 plotSize = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
 
