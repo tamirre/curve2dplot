@@ -146,6 +146,11 @@ struct Node {
         if ((dir = opendir(path.c_str())) != NULL)
         {
             int id = 0;
+
+            // Replace windows slash in path for display
+            const char winSlash = '\\';
+            const char slash = '/';
+            std::replace(path.begin(), path.end(), winSlash, slash);
             Node root = {path, ".", dirCntr++, -1, false, NULL};
             std::vector<Node> children;
             while ((ent = readdir(dir)) != NULL)
@@ -164,6 +169,7 @@ struct Node {
                     int size = st.st_size;
 
                     // Node child = {ent->d_name, filePathName, id++, size, false, &root};
+
                     Node child = {ent->d_name, filePath, id++, size, false, &root};
                     // child.curve = readCurve(filePath);
 
@@ -599,10 +605,10 @@ int main(int, char**)
             ImGui::InputTextWithHint("##", "Absolute path to directory...", pathInputText, IM_ARRAYSIZE(pathInputText));
             ImGui::SameLine();
             
-            if(ImGui::Button("Add Dir"))
+            if(ImGui::Button("Add"))
                 addDirFlag = true;
             ImGui::SameLine();
-            if(ImGui::Button("..."))
+            if(ImGui::Button("Browse..."))
                 show_filedialog = true;
 
             if(addDirFlag)
