@@ -490,6 +490,8 @@ int main(int, char**)
     static ImVector<Tab> activeTabs;
     static int nextTabId = 0;
     static std::string lastPath = ".";
+    static char xAxisLabelText[128] = "";
+    static char yAxisLabelText[128] = "";
     bool show_demo_window = false;
     bool show_filedialog = false;
     bool show_scandialog = false;
@@ -509,12 +511,17 @@ int main(int, char**)
     activeTabs.push_back(defaultTab);
 
     // HACK(Tamir): adding some dirs hardcoded for testing
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/Lagerring/first-crv"), lastPath, dirCntr));
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/Lagerring/first-crv-old"), lastPath, dirCntr));
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_blend/first-crv"), lastPath, dirCntr));
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_blend/first-crv-old"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/Lagerring/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/Lagerring/first-crv-old"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_blend/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_blend/first-crv-old"), lastPath, dirCntr));
     // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_konst/first-crv"), lastPath, dirCntr));
     // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_noEM/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MatIso/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MatAniso/first-crv"), lastPath, dirCntr));
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/Reduk"), lastPath, dirCntr));
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/ForcesIsoWire/first-crv"), lastPath, dirCntr));
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/ForcesAniso/first-crv"), lastPath, dirCntr));
     
     // bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.086f, 0.086f, 0.086f, 1.00f);
@@ -632,7 +639,11 @@ int main(int, char**)
             ImGui::SameLine();
             redock_all = ImGui::Button("Redock all");
             reset_plots = ImGui::Button("Reset all Plots");
-            
+
+            // HACK(Tamir): Just use simple text fields for axis labels for now... Maybe modal/popup in plot window later
+            ImGui::InputTextWithHint("##xaxis", "X-Axis Label...", xAxisLabelText, IM_ARRAYSIZE(xAxisLabelText));
+            ImGui::InputTextWithHint("##yaxis", "Y-Axis Label...", yAxisLabelText, IM_ARRAYSIZE(yAxisLabelText));
+
             {
                 ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
                 // NOTE(Tamir:) Create child such that the scroll bar is only scrolling the file browser, not the entire window
@@ -713,6 +724,8 @@ int main(int, char**)
                     // if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip))
                 //         active_tabs.push_back(next_tab_id++); // Add new tab
 
+
+
                 // Create a DockSpace node where any window can be docked
                 ImGuiID dockspace_id = ImGui::GetID("PlotDockSpace");
                 ImGui::DockSpace(dockspace_id);
@@ -791,7 +804,7 @@ int main(int, char**)
                         const char* items[] = {"Circle", "Square", "Asterisk",
                                                "Diamond", "Cross", "Plus"};
                         static int item_current = 0;
-                           
+
                         // Setup state, colors and axis limits in first pass
                         for (long unsigned int i = 0; i < Tree.size(); i++)
                         {
@@ -858,7 +871,9 @@ int main(int, char**)
                             //     lastFocussedTab
                             // );
 
-                            ImPlot::SetupAxes("x", "y");
+                            ImPlot::SetupAxes(xAxisLabelText, yAxisLabelText);
+                            // ImPlot::SetupAxis(ImAxis_X1, xAxisLabelText);
+                            // ImPlot::SetupAxis(ImAxis_Y1, yAxisLabelText);
                             if(rangesChanged)
                             {
                                 ImPlot::SetupAxesLimits(xmin, xmax, ymin, ymax, ImPlotCond_Always);
@@ -939,6 +954,7 @@ int main(int, char**)
                             
                             ImPlot::EndPlot();
                         }
+
                         // Track the last focussed tab to add plots to correct tab
                         if(ImGui::IsItemFocused())
                         {
