@@ -116,11 +116,13 @@ struct Curve
     double xmax;
     double ymin;
     double ymax;
+    double mean;
 
     // Options:
     ImVec4 color; // = ImVec4(IMPLOT_AUTO_COL);
     float thickness = 1.0f;
     bool markerFlag = false;
+    bool showMeanFlag = false;
     ImPlotMarker marker;
     float markerSize = 1.0f;
     float markerWeight = 1.0f;
@@ -321,6 +323,19 @@ struct Node {
     }
 };
 
+double calculateMean(std::vector<double> y, int xmin, int xmax)
+{
+    double mean = 0.0;
+    std::vector<double>(y.begin()+xmin, y.begin()+xmax).swap(y);
+    int newSize = y.size();
+    for(double elem : y)
+    {
+        mean += elem;
+    }
+    mean = mean / (xmax - xmin);
+    return mean;
+}
+              
 Curve readCurve(std::string filePath)
 {
     Curve curve;
@@ -492,6 +507,10 @@ int main(int, char**)
     static std::string lastPath = ".";
     static char xAxisLabelText[128] = "";
     static char yAxisLabelText[128] = "";
+    // static char xAxisMinText[128] = "";
+    // static char xAxisMaxText[128] = "";
+    static int xAxisMin = 0;
+    static int xAxisMax = 1;
     bool show_demo_window = false;
     bool show_filedialog = false;
     bool show_scandialog = false;
@@ -502,6 +521,7 @@ int main(int, char**)
     bool redock_all = false;
     bool reset_plots = false;
     bool addDirFlag = false;
+    bool globalShowMeanFlag = false;
     int dirCntr = 0;
     
     std::vector<Node> Tree;
@@ -519,9 +539,12 @@ int main(int, char**)
     // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_noEM/first-crv"), lastPath, dirCntr));
     // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MatIso/first-crv"), lastPath, dirCntr));
     // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MatAniso/first-crv"), lastPath, dirCntr));
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/Reduk"), lastPath, dirCntr));
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/ForcesIsoWire/first-crv"), lastPath, dirCntr));
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/ForcesAniso/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/Reduk"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/ForcesIsoWire/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/ForcesAniso/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/ForcesMCAD/first-crv"), lastPath, dirCntr));
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/Modellstufe2/first-crv"), lastPath, dirCntr));
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/Modellstufe2_20Nm/first-crv"), lastPath, dirCntr));
     
     // bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.086f, 0.086f, 0.086f, 1.00f);
@@ -571,6 +594,7 @@ int main(int, char**)
             if (ImGui::BeginMenu("About"))
             {
                 ImGui::MenuItem("Help...", "CTRL+H", &show_helpWindow);
+                ImGui::MenuItem("Version:", "0.1");
                 ImGui::EndMenu();
             }
             ImGui::EndMainMenuBar();
@@ -638,12 +662,23 @@ int main(int, char**)
             plotFlag = ImGui::Button("Add Plot Tab");
             ImGui::SameLine();
             redock_all = ImGui::Button("Redock all");
+            ImGui::SameLine();
             reset_plots = ImGui::Button("Reset all Plots");
 
             // HACK(Tamir): Just use simple text fields for axis labels for now... Maybe modal/popup in plot window later
             ImGui::InputTextWithHint("##xaxis", "X-Axis Label...", xAxisLabelText, IM_ARRAYSIZE(xAxisLabelText));
             ImGui::InputTextWithHint("##yaxis", "Y-Axis Label...", yAxisLabelText, IM_ARRAYSIZE(yAxisLabelText));
 
+            // Range selection for mean calculation
+            // static char buf2[64] = ""; ImGui::InputText("decimal",     buf2, 64, ImGuiInputTextFlags_CharsDecimal);
+
+            ImGui::InputInt("x min", &xAxisMin);
+            ImGui::InputInt("x max", &xAxisMax);
+            // ImGui::InputTextWithHint("##xaxismin", "x min...", xAxisMinText, IM_ARRAYSIZE(xAxisMinText), ImGuiInputTextFlags_CharsDecimal);
+            // ImGui::InputTextWithHint("##xaxismax", "x max...", xAxisMaxText, IM_ARRAYSIZE(xAxisMaxText), ImGuiInputTextFlags_CharsDecimal);
+            // ImGui::Checkbox("Markers", &Tree[i].children[j].curve.markerFlag);
+            ImGui::Checkbox("Show mean", &globalShowMeanFlag);
+            
             {
                 ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
                 // NOTE(Tamir:) Create child such that the scroll bar is only scrolling the file browser, not the entire window
@@ -830,7 +865,6 @@ int main(int, char**)
                                         Tree[i].children[j].curve = readCurve(Tree[i].children[j].pathName);
                                         Tree[i].children[j].curve.color = ImPlot::GetColormapColor(numCurves++);
                                         Tree[i].children[j].curve.color.w = 1.0f;
-
                                     }
                                     
                                     if (Tree[i].children[j].curve.xmin < xmin)
@@ -891,7 +925,6 @@ int main(int, char**)
                                         {
                                             if(Tree[i].children[j].Index == activeTabs[n].activePlots[k])
                                             {
-
                                                 inTab = true;
                                             }
                                         }
@@ -947,7 +980,25 @@ int main(int, char**)
                                                          x,
                                                          y,
                                                          Tree[i].children[j].curve.x.size());
+                                        if(globalShowMeanFlag)
+                                        {
+                                            Tree[i].children[j].curve.showMeanFlag = globalShowMeanFlag;
+                                            // uint32_t xMinVal = *static_cast<uint32_t*>(xAxisMinText);
+                                            // uint32_t xMaxVal = *static_cast<uint32_t*>(xAxisMaxText);
 
+                                            // uint32_t xMinVal = (uint32_t)(xAxisMinText);
+                                            // uint32_t xMaxVal = (uint32_t)(xAxisMaxText);
+
+                                            
+                                            // memcpy(&xMinVal, xAxisMinText, sizeof xMinVal);
+                                            // memcpy(&xMaxVal, xAxisMaxText, sizeof xMaxVal);
+                                            Tree[i].children[j].curve.mean = calculateMean(Tree[i].children[j].curve.y, xAxisMin, xAxisMax);
+                                            // std::cout << Tree[i].children[j].curve.mean << std::endl;
+                                            // Plot mean if checkbox is checked
+                                            // ImPlot::PlotLine()
+                                            std::string meanText = "Mean: " + Tree[i].children[j].pathName;
+                                            ImPlot::PlotInfLines(meanText.c_str(), &Tree[i].children[j].curve.mean, 1, ImPlotInfLinesFlags_Horizontal);
+                                        }
                                     }
                                 }
                             }
