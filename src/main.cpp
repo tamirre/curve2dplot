@@ -509,8 +509,8 @@ int main(int, char**)
     static char yAxisLabelText[128] = "";
     // static char xAxisMinText[128] = "";
     // static char xAxisMaxText[128] = "";
-    static int xAxisMin = 0;
-    static int xAxisMax = 1;
+    static int xAxisMin = 360;
+    static int xAxisMax = 720;
     bool show_demo_window = false;
     bool show_filedialog = false;
     bool show_scandialog = false;
@@ -996,6 +996,7 @@ int main(int, char**)
                                             // std::cout << Tree[i].children[j].curve.mean << std::endl;
                                             // Plot mean if checkbox is checked
                                             // ImPlot::PlotLine()
+                                            ImPlot::SetNextLineStyle(Tree[i].children[j].curve.color, Tree[i].children[j].curve.thickness);
                                             std::string meanText = "Mean: " + Tree[i].children[j].pathName;
                                             ImPlot::PlotInfLines(meanText.c_str(), &Tree[i].children[j].curve.mean, 1, ImPlotInfLinesFlags_Horizontal);
                                         }
