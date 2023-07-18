@@ -44,6 +44,15 @@
 #define GL_SILENCE_DEPRECATION
 #endif
 
+// // Enforce cdecl calling convention for functions called by the standard library, in case compilation settings changed the default to e.g. __vectorcall
+// #ifndef IMGUI_CDECL
+// #ifdef _MSC_VER
+// #define IMGUI_CDECL __cdecl
+// #else
+// #define IMGUI_CDECL
+// #endif
+// #endif
+
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
@@ -117,9 +126,10 @@ struct Curve
     double ymin;
     double ymax;
     double mean;
+    double deltaX = 1.0;
 
     // Options:
-    ImVec4 color; // = ImVec4(IMPLOT_AUTO_COL);
+    ImVec4 color = ImPlot::GetColormapColor(0);
     float thickness = 1.0f;
     bool markerFlag = false;
     bool showMeanFlag = false;
@@ -139,6 +149,15 @@ struct Node {
     std::vector<Node> children;
     Curve curve;
 
+    static int compare(const void * lhs, const void * rhs)
+    {
+        const Node* a = (const Node*)lhs;
+        const Node* b = (const Node*)rhs;
+        return (strcmp(a->Name.c_str(), b->Name.c_str()));
+        // return (a->Index - b->Index);
+        // return 1;
+    }
+    
     static Node listFilesInDirectory(std::string path, std::string &lastPath, int &dirCntr)
     {
         DIR* dir;
@@ -179,6 +198,8 @@ struct Node {
                 // } else if(dp->d_type == DT_DIR) {
                 }
             }
+            // TODO: sort children before adding them
+            // qsort(&children, children.size(), sizeof(children[0]), Node::compare);
             // TODO: std::move?
             root.children = children;
 
@@ -244,7 +265,7 @@ struct Node {
                 ImGui::EndPopup();
             }
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Right-click for optons");
+                ImGui::SetTooltip("Right-click for options");
             // ImGui::TextDisabled("--");
             // ImGui::TableNextColumn();
             // ImGui::Button("Options");
@@ -323,16 +344,16 @@ struct Node {
     }
 };
 
-double calculateMean(std::vector<double> y, int xmin, int xmax)
+double calculateMean(std::vector<double> y, double xmin, double xmax, double deltax)
 {
     double mean = 0.0;
-    std::vector<double>(y.begin()+xmin, y.begin()+xmax).swap(y);
+    std::vector<double>(y.begin()+xmin/deltax, y.begin()+xmax/deltax).swap(y);
     int newSize = y.size();
     for(double elem : y)
     {
         mean += elem;
     }
-    mean = mean / (xmax - xmin);
+    mean = mean * deltax / (xmax - xmin);
     return mean;
 }
               
@@ -366,6 +387,8 @@ Curve readCurve(std::string filePath)
 
     curve.ymax = *std::max_element(curve.y.begin(), curve.y.end());
     curve.ymin = *std::min_element(curve.y.begin(), curve.y.end());
+
+    curve.deltaX = curve.x[1] - curve.x[0];
     
     // std::cout << "SIZE: " << curve.x.size() << std::endl;
     // std::cout.precision(8);
@@ -509,8 +532,8 @@ int main(int, char**)
     static char yAxisLabelText[128] = "";
     // static char xAxisMinText[128] = "";
     // static char xAxisMaxText[128] = "";
-    static int xAxisMin = 360;
-    static int xAxisMax = 720;
+    static double xAxisMin = 0.0;
+    static double xAxisMax = 1.0;
     bool show_demo_window = false;
     bool show_filedialog = false;
     bool show_scandialog = false;
@@ -531,20 +554,28 @@ int main(int, char**)
     activeTabs.push_back(defaultTab);
 
     // HACK(Tamir): adding some dirs hardcoded for testing
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/Lagerring/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/Lagerring/first-crv-old"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_blend/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_blend/first-crv-old"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_konst/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MWE_noEM/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MatIso/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/MatAniso/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/Reduk"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/ForcesIsoWire/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/ForcesAniso/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/ForcesMCAD/first-crv"), lastPath, dirCntr));
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/Modellstufe2/first-crv"), lastPath, dirCntr));
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/Modellstufe2_20Nm/first-crv"), lastPath, dirCntr));
+    
+    // Tree.push_back(Node::listFilesInDirectory(std::string("v:/home/tamir/projects/Mesys/Jobs/axialHousing/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("v:/home/tamir/projects/Mesys/Jobs/radialHousing/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("v:/home/tamir/projects/Mesys/Jobs/axialPlusRadialHousing/first-crv"), lastPath, dirCntr));
+
+
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm-fine"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm-stat200-fine"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm-stat200-fine-damp"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm-stat200-fine-freq"), lastPath, dirCntr));
+
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/setup1-100Nm-stat200-fine/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/setup1-100Nm-stat200-fine-damp/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/setup1-100Nm-stat200-fine-freq/first-crv"), lastPath, dirCntr));
+
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm-Testbench-stat2-setup1"), lastPath, dirCntr));
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm-stat200-fine"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm-Testbench-stat1-setup6"), lastPath, dirCntr));
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm-Testbench-stat1-setup1"), lastPath, dirCntr));
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm-fine"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/"), lastPath, dirCntr));
     
     // bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.086f, 0.086f, 0.086f, 1.00f);
@@ -628,7 +659,7 @@ int main(int, char**)
         // NAVIGATION WINDOW SECTION
         {
             ImGui::SetNextWindowSize(ImVec2(400, 700), ImGuiCond_FirstUseEver);
-            ImGui::Begin("Navigation");                          // Create a window called "Hello, world!" and append into it.
+            ImGui::Begin("Navigation");                          
             
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
@@ -672,8 +703,8 @@ int main(int, char**)
             // Range selection for mean calculation
             // static char buf2[64] = ""; ImGui::InputText("decimal",     buf2, 64, ImGuiInputTextFlags_CharsDecimal);
 
-            ImGui::InputInt("x min", &xAxisMin);
-            ImGui::InputInt("x max", &xAxisMax);
+            ImGui::InputDouble("x min", &xAxisMin);
+            ImGui::InputDouble("x max", &xAxisMax);
             // ImGui::InputTextWithHint("##xaxismin", "x min...", xAxisMinText, IM_ARRAYSIZE(xAxisMinText), ImGuiInputTextFlags_CharsDecimal);
             // ImGui::InputTextWithHint("##xaxismax", "x max...", xAxisMaxText, IM_ARRAYSIZE(xAxisMaxText), ImGuiInputTextFlags_CharsDecimal);
             // ImGui::Checkbox("Markers", &Tree[i].children[j].curve.markerFlag);
@@ -692,6 +723,11 @@ int main(int, char**)
                                                ImGuiTableFlags_Reorderable | 
                                                ImGuiTableFlags_RowBg |
                                                ImGuiTableFlags_NoBordersInBody;
+                                               // ImGuiTableFlags_ScrollY;
+
+                // static ImGuiTableFlags flags =
+             // ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_NoBordersInBody
+            // | ImGuiTableFlags_ScrollY;
 
                 ImVec2 outer_size = ImVec2(0.0f, TEXT_BASE_HEIGHT * 5);
                 if (ImGui::BeginTable("table_scrolly", 2, flags, outer_size))
@@ -699,6 +735,7 @@ int main(int, char**)
                     // The first column will use the default _WidthStretch when ScrollX is Off and _WidthFixed when ScrollX is On
                     ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide);
                     ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 12.0f);
+                    // ImGui::TableSetupScrollFreeze(0, 1); // Make row always visible (only works with ScrollY flag enabled?)
                     ImGui::TableHeadersRow();
 
                     for (long unsigned int i = 0; i < Tree.size(); i++)
@@ -811,18 +848,7 @@ int main(int, char**)
                     // if (ImGui::BeginTabItem(name, &open, ImGuiTabItemFlags_None))
                     if (ImGui::Begin(name, &open))
                     {
-                        // TODO: Reactivate once the state of the checkboxes is saved correctly
-                        if(lastFocussedTab == activeTabs[n].Index && reset_plots)
-                        {
-                            for (long unsigned int i = 0; i < Tree.size(); i++)
-                            {
-                                for (long unsigned int j = 0; j < Tree[i].children.size(); j++)
-                                {
-                                    Tree[i].children[j].checkboxState = false;
-                                }
-                            }
-                        }
-                        
+
                         const ImVec2 plotSize = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
 
                         static char   titleInput[128];
@@ -839,6 +865,21 @@ int main(int, char**)
                         const char* items[] = {"Circle", "Square", "Asterisk",
                                                "Diamond", "Cross", "Plus"};
                         static int item_current = 0;
+                        
+                        // TODO: Reactivate once the state of the checkboxes is saved correctly
+                        if(lastFocussedTab == activeTabs[n].Index && reset_plots)
+                        {
+                            numCurves = 0;
+                            for (long unsigned int i = 0; i < Tree.size(); i++)
+                            {
+                                for (long unsigned int j = 0; j < Tree[i].children.size(); j++)
+                                {
+                                    Tree[i].children[j].checkboxState = false;
+                                    Tree[i].children[j].curve.x.clear();
+                                    Tree[i].children[j].curve.y.clear();
+                                }
+                            }
+                        }
 
                         // Setup state, colors and axis limits in first pass
                         for (long unsigned int i = 0; i < Tree.size(); i++)
@@ -863,10 +904,10 @@ int main(int, char**)
                                     if(Tree[i].children[j].curve.x.size() == 0)
                                     {
                                         Tree[i].children[j].curve = readCurve(Tree[i].children[j].pathName);
-                                        Tree[i].children[j].curve.color = ImPlot::GetColormapColor(numCurves++);
                                         Tree[i].children[j].curve.color.w = 1.0f;
+                                        Tree[i].children[j].curve.color = ImPlot::GetColormapColor(numCurves++);
                                     }
-                                    
+
                                     if (Tree[i].children[j].curve.xmin < xmin)
                                     {
                                         xmin = Tree[i].children[j].curve.xmin;
@@ -887,6 +928,9 @@ int main(int, char**)
                                         ymax = Tree[i].children[j].curve.ymax;
                                         rangesChanged = true;
                                     }
+                                } else {
+                                    
+                                    // Tree[i].children[j].curve.color = ImPlot::GetColormapColor(numCurves--);
                                 }
                             }
                         }
@@ -992,7 +1036,7 @@ int main(int, char**)
                                             
                                             // memcpy(&xMinVal, xAxisMinText, sizeof xMinVal);
                                             // memcpy(&xMaxVal, xAxisMaxText, sizeof xMaxVal);
-                                            Tree[i].children[j].curve.mean = calculateMean(Tree[i].children[j].curve.y, xAxisMin, xAxisMax);
+                                            Tree[i].children[j].curve.mean = calculateMean(Tree[i].children[j].curve.y, xAxisMin, xAxisMax, Tree[i].children[j].curve.deltaX);
                                             // std::cout << Tree[i].children[j].curve.mean << std::endl;
                                             // Plot mean if checkbox is checked
                                             // ImPlot::PlotLine()

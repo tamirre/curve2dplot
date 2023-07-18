@@ -1,45 +1,51 @@
-// read a file into memory
-#include <iostream>     // std::cout
-#include <fstream>      // std::ifstream
+#include <tcl.h>
+#include <stdexcept>
+#include <string>
+#include <iostream>
+#include <stdlib.h>
 
-int main () {
+public class TclInterpreter {
+private:
+    Tcl_Interp *interp;
+public:
+    TclInterpreter(const char *argv0 = nullptr) : interp(nullptr) {
+        static bool initLib;
+        if (!initLib) {
+            Tcl_FindExecutable(argv0);
+            initLib = true;
+        }
+        interp = Tcl_CreateInterp();
+        if (!interp) throw new std::runtime_error("failed to initialise Tcl library");
+    }
 
-  // std::ifstream is ("test.txt", std::ifstream::binary);
-  std::ifstream is ("test.txt");
-  if (is) {
-    // get length of file:
-    is.seekg (0, is.end);
-    int length = is.tellg();
-    is.seekg (0, is.beg);
+    ~TclInterpreter() {
+        if (interp) Tcl_DeleteInterp(interp);
+    }
 
-    char * buffer = new char [length];
+    std::string evalFile(const std::string &filename) {
+        // This next line is the CRITICAL one!
+        int code = Tcl_EvalFile(interp, filename.c_str());
 
-    std::cout << "Reading " << length << " characters... ";
-    // read data as a block:
-    is.read (buffer,length);
+        if (code >= TCL_ERROR) {
+            // You should make your own exception, but I've lost patience typing it out
+            // This throws the exception message; it lasts until you use the interpreter again
+            throw Tcl_GetStringResult(interp);
+        }
+        return std::string(Tcl_GetStringResult(interp));
+    }
+};
 
-    // char * outbuffer = new char [length*2+1];   
-    // char* pHexTable="0123456789ABCDEF";
-    // int iPos=0;
+int main(int argc, char **argv)
+{
+    // TclInterpreter interpreter(argv[0]); // << omit ‘argv[0]’ if you don't know it
+    putenv("LMTDIR=\"c:/Program Files/IST 8.1.1 - omp i17/lmt-8.1.1/\"");
+    putenv("LMTSYS=wxx_n64_omp_i17");
+    TclInterpreter interpreter(0); // << omit ‘argv[0]’ if you don't know it
+    // std::string filename("C:/projects/gui/src/test.tcl");
+    std::string filename("c:/Program Files/IST 8.1.1 - omp i17/lmt-8.1.1/tools/common/zwi2tab.tcl");
+    std::string result = interpreter.evalFile(filename);
+    std::cout << result << '\n';
+    std::cout << "Test" << std::endl;
 
-    // for(int i=0; i<length; i++){
-    //     //assume buffer contains some binary data at this point
-    //     char cHex=buffer[i];
-    //     outbuffer[iPos++]=pHexTable[(cHex>>4)&0x0f];
-    //     outbuffer[iPos++]=pHexTable[cHex&0x0f];
-    // }
-    // outbuffer[iPos]='\0';
-    std::cout << buffer << std::endl;
-    if (is)
-      std::cout << "all characters read successfully.";
-    else
-      std::cout << "error: only " << is.gcount() << " could be read";
-    is.close();
-
-    // ...buffer contains the entire file...
-
-    delete[] buffer;
-    // delete[] outbuffer;
-  }
-  return 0;
+    return 0;
 }
