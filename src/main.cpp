@@ -44,6 +44,15 @@
 #define GL_SILENCE_DEPRECATION
 #endif
 
+// Enforce cdecl calling convention for functions called by the standard library, in case compilation settings changed the default to e.g. __vectorcall
+#ifndef IMGUI_CDECL
+#ifdef _MSC_VER
+#define IMGUI_CDECL __cdecl
+#else
+#define IMGUI_CDECL
+#endif
+#endif
+
 // // Enforce cdecl calling convention for functions called by the standard library, in case compilation settings changed the default to e.g. __vectorcall
 // #ifndef IMGUI_CDECL
 // #ifdef _MSC_VER
@@ -139,6 +148,14 @@ struct Curve
     
 };
 
+// Column IDs for sorting
+enum MyItemColumnID
+{
+    // MyItemColumnID_ID,
+    MyItemColumnID_Name,
+    MyItemColumnID_Size,
+};
+
 struct Node {
     std::string Name;
     std::string pathName;
@@ -148,14 +165,45 @@ struct Node {
     Node *parent; 
     std::vector<Node> children;
     Curve curve;
+    static const ImGuiTableSortSpecs* s_current_sort_specs;
 
-    static int compare(const void * lhs, const void * rhs)
+    // static int compare(const void * lhs, const void * rhs)
+    // {
+    //     const Node* a = (const Node*)lhs;
+    //     const Node* b = (const Node*)rhs;
+    //     return (strcmp(a->Name.c_str(), b->Name.c_str()));
+    //     // return (a->Index - b->Index);
+    //     // return 1;
+    // }
+
+    // Compare function to be used by qsort()
+    static int IMGUI_CDECL myCompare(const void* lhs, const void* rhs)
     {
         const Node* a = (const Node*)lhs;
         const Node* b = (const Node*)rhs;
-        return (strcmp(a->Name.c_str(), b->Name.c_str()));
-        // return (a->Index - b->Index);
-        // return 1;
+        for (int n = 0; n < s_current_sort_specs->SpecsCount; n++)
+        {
+            // Here we identify columns using the ColumnUserID value that we ourselves passed to TableSetupColumn()
+            // We could also choose to identify columns based on their index (sort_spec->ColumnIndex), which is simpler!
+            const ImGuiTableColumnSortSpecs* sort_spec = &s_current_sort_specs->Specs[n];
+            int delta = 0;
+            switch (sort_spec->ColumnUserID)
+            {
+                case MyItemColumnID_Name:           delta = (strcmp(a->Name.c_str(), b->Name.c_str()));     break;
+                case MyItemColumnID_Size:           delta = (a->Size - b->Size);     break;
+                // case MyItemColumnID_Quantity:       delta = (a->Quantity - b->Quantity);    break;
+                // case MyItemColumnID_Description:    delta = (strcmp(a->Name, b->Name));     break;
+                default: IM_ASSERT(0); break;
+            }
+            if (delta > 0)
+                return (sort_spec->SortDirection == ImGuiSortDirection_Ascending) ? +1 : -1;
+            if (delta < 0)
+                return (sort_spec->SortDirection == ImGuiSortDirection_Ascending) ? -1 : +1;
+        }
+
+        // qsort() is instable so always return a way to differenciate items.
+        // Your own compare function may want to avoid fallback on implicit sort specs e.g. a Name compare if it wasn't already part of the sort specs.
+        return (a->Index - b->Index);
     }
     
     static Node listFilesInDirectory(std::string path, std::string &lastPath, int &dirCntr)
@@ -198,8 +246,24 @@ struct Node {
                 // } else if(dp->d_type == DT_DIR) {
                 }
             }
-            // TODO: sort children before adding them
-            // qsort(&children, children.size(), sizeof(children[0]), Node::compare);
+
+            // // TODO: FIXME
+            // // --------------------------------------------------------
+            // // Sort our data if sort specs have been changed!
+            // if (ImGuiTableSortSpecs* sorts_specs = ImGui::TableGetSortSpecs())
+            // {
+            //     if (sorts_specs->SpecsDirty)
+            //     {
+            //         children[0].s_current_sort_specs = sorts_specs; // Store in variable accessible by the sort function.
+            //         if (children.size() > 1)
+            //             // qsort(&items[0], (size_t)items.Size, sizeof(items[0]), MyItem::CompareWithSortSpecs);
+            //             qsort(&children, (size_t)children.size(), sizeof(children[0]), Node::myCompare);
+            //         children[0].s_current_sort_specs = NULL;
+            //         sorts_specs->SpecsDirty = false;
+            //     }
+            // }
+            // // --------------------------------------------------------
+            
             // TODO: std::move?
             root.children = children;
 
@@ -217,7 +281,6 @@ struct Node {
 
     }
 
-    
     static void DisplayNodes(Node &root, ImGuiTextFilter filter, std::vector<Node> &Tree, std::string &lastPath, int &dirCntr)
     {
         const bool is_folder = (root.children.size() > 0);
@@ -270,30 +333,21 @@ struct Node {
             // ImGui::TableNextColumn();
             // ImGui::Button("Options");
             ImGui::TableNextColumn();
-
-            // // POPUPTEST
-            // static int selected_fish = -1;
-            // const char* names[] = { "Bream", "Haddock", "Mackerel", "Pollock", "Tilefish" };
-            // static bool toggles[] = { true, false, false, false, false };
-
-            // // Simple selection popup (if you want to show the current selection inside the Button itself,
-            // // you may want to build a string using the "###" operator to preserve a constant ID with a variable label)
-            // if (ImGui::Button("Select.."))
-            //     ImGui::OpenPopup("my_select_popup");
-            // ImGui::SameLine();
-            // ImGui::TextUnformatted(selected_fish == -1 ? "<None>" : names[selected_fish]);
-            // if (ImGui::BeginPopup("my_select_popup"))
-            // {
-            //     ImGui::Text("Aquarium");
-            //     ImGui::Separator();
-            //     for (int i = 0; i < IM_ARRAYSIZE(names); i++)
-            //         if (ImGui::Selectable(names[i]))
-            //             selected_fish = i;
-            //     ImGui::EndPopup();
-            // }
             if (open)
             {
-
+                // --------------------------------------------------------
+                // Sort our data if sort specs have been changed!
+                if (ImGuiTableSortSpecs* sorts_specs = ImGui::TableGetSortSpecs())
+                {
+                    if (sorts_specs->SpecsDirty)
+                    {
+                        Tree[0].s_current_sort_specs = sorts_specs; // Store in variable accessible by the sort function.
+                        if (root.children.size() > 1)
+                            qsort(&root.children[0], (size_t)root.children.size(), sizeof(root.children[0]), Node::myCompare);
+                        Tree[0].s_current_sort_specs = NULL;
+                        sorts_specs->SpecsDirty = false;
+                    }
+                }
                 for (long unsigned int j = 0; j < root.children.size(); j++)
                 {
                     Node::DisplayNodes(root.children[j], filter, Tree, lastPath, dirCntr);
@@ -320,8 +374,8 @@ struct Node {
                 // ImGui::SameLine(1.0f, ImGui::GetCursorPosX());
 
                 ImGui::TreeNodeEx(root.Name.c_str(), ImGuiTreeNodeFlags_Leaf |
-                                                      ImGuiTreeNodeFlags_NoTreePushOnOpen |
-                                                      ImGuiTreeNodeFlags_SpanFullWidth);
+                                                     ImGuiTreeNodeFlags_NoTreePushOnOpen |
+                                                     ImGuiTreeNodeFlags_SpanFullWidth);
 
                 ImGui::TableNextColumn();
                 float sizeDisplay;
@@ -336,19 +390,22 @@ struct Node {
                 {
                     sizeDisplay = (float)(root.Size)/(1024.0f*1024.0f); 
                     ImGui::Text("%.2f MB", sizeDisplay);
-                }
+                }                
             } else {
-                root.checkboxState = false;
+                // NOTE(Tamir): if plot is supposed to be cleared with new search query uncomment the line below
+                // root.checkboxState = false;
             }
         }
     }
 };
 
+const ImGuiTableSortSpecs* Node::s_current_sort_specs = NULL;
+
 double calculateMean(std::vector<double> y, double xmin, double xmax, double deltax)
 {
     double mean = 0.0;
     std::vector<double>(y.begin()+xmin/deltax, y.begin()+xmax/deltax).swap(y);
-    int newSize = y.size();
+    // int newSize = y.size();
     for(double elem : y)
     {
         mean += elem;
@@ -555,28 +612,20 @@ int main(int, char**)
 
     // HACK(Tamir): adding some dirs hardcoded for testing
     
-    // Tree.push_back(Node::listFilesInDirectory(std::string("v:/home/tamir/projects/Mesys/Jobs/axialHousing/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("v:/home/tamir/projects/Mesys/Jobs/radialHousing/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("v:/home/tamir/projects/Mesys/Jobs/axialPlusRadialHousing/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("v:/home/tamir/projects/Mesys/Jobs/axial/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("v:/home/tamir/projects/Mesys/Jobs/radial/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("v:/home/tamir/projects/Mesys/Jobs/mixed/first-crv"), lastPath, dirCntr));
 
+    // Tree.push_back(Node::listFilesInDirectory(std::string("u:/tamir/EleSim/Jobs/WL-FIRST/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("u:/tamir/EleSim/Jobs/WL-MESYS/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("u:/tamir/EleSim/Jobs/WL-FIRST-PZP/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("u:/tamir/EleSim/Jobs/WL-PZP/first-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/Daimler/PKW/1905-Kolbenringe/Jobs/basicmodel/first-crv"), lastPath, dirCntr));
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/Daimler/PKW/1905-Kolbenringe/Jobs/basicmodel-8.1.3/first-crv"), lastPath, dirCntr));
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/Daimler/PKW/1905-Kolbenringe/Jobs/basicmodel-rings/first_all-crv"), lastPath, dirCntr));
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/Daimler/PKW/1905-Kolbenringe/Jobs/basicmodel-restspieltol/first_all-crv"), lastPath, dirCntr));
+    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/Daimler/PKW/1905-Kolbenringe/Jobs/basicmodel-rings/first-out"), lastPath, dirCntr));
 
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm-fine"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm-stat200-fine"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm-stat200-fine-damp"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm-stat200-fine-freq"), lastPath, dirCntr));
-
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/setup1-100Nm-stat200-fine/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/setup1-100Nm-stat200-fine-damp/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Jobs/setup1-100Nm-stat200-fine-freq/first-crv"), lastPath, dirCntr));
-
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm-Testbench-stat2-setup1"), lastPath, dirCntr));
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm-stat200-fine"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm-Testbench-stat1-setup6"), lastPath, dirCntr));
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm-Testbench-stat1-setup1"), lastPath, dirCntr));
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/setup1-100Nm-fine"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/ZIM-EleSim/Results/"), lastPath, dirCntr));
-    
     // bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.086f, 0.086f, 0.086f, 1.00f);
     
@@ -711,37 +760,91 @@ int main(int, char**)
             ImGui::Checkbox("Show mean", &globalShowMeanFlag);
             
             {
-                ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
+                // ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
                 // NOTE(Tamir:) Create child such that the scroll bar is only scrolling the file browser, not the entire window
-                ImGui::BeginChild("ChildBelow", ImVec2(ImGui::GetContentRegionAvail().x,ImGui::GetContentRegionAvail().y), false, window_flags);
+                // ImGui::BeginChild("ChildBelow", ImVec2(ImGui::GetContentRegionAvail().x,ImGui::GetContentRegionAvail().y), false, window_flags);
+
+                ImGui::BeginChild("ChildBelow", ImVec2(ImGui::GetContentRegionAvail().x,ImGui::GetContentRegionAvail().y));
                 
                 const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
                 const float TEXT_BASE_HEIGHT = ImGui::CalcTextSize("A").y;
-                static ImGuiTableFlags flags = ImGuiTableFlags_BordersV |
-                                               ImGuiTableFlags_BordersOuterH |
-                                               ImGuiTableFlags_Resizable |
-                                               ImGuiTableFlags_Reorderable | 
+                static ImGuiTableFlags flags = ImGuiTableFlags_Resizable |
+                                               ImGuiTableFlags_Reorderable |
+                                               ImGuiTableFlags_Hideable |
+                                               ImGuiTableFlags_Sortable |
+                                               ImGuiTableFlags_SortMulti | 
                                                ImGuiTableFlags_RowBg |
-                                               ImGuiTableFlags_NoBordersInBody;
-                                               // ImGuiTableFlags_ScrollY;
+                                               ImGuiTableFlags_BordersOuter |
+                                               ImGuiTableFlags_BordersV |
+                                               ImGuiTableFlags_NoBordersInBody |
+                                               ImGuiTableFlags_ScrollY;
+
+                    // ImGuiTableFlags_BordersV |
+                    // ImGuiTableFlags_BordersOuterH |
+                    // ImGuiTableFlags_Resizable |
+                    // ImGuiTableFlags_Reorderable | 
+                    // ImGuiTableFlags_RowBg |
+                    // ImGuiTableFlags_NoBordersInBody |
+                    // ImGuiTableFlags_SortMulti |
+                    // ImGuiTableFlags_ScrollY;
 
                 // static ImGuiTableFlags flags =
              // ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_NoBordersInBody
             // | ImGuiTableFlags_ScrollY;
 
-                ImVec2 outer_size = ImVec2(0.0f, TEXT_BASE_HEIGHT * 5);
+                ImVec2 outer_size = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
                 if (ImGui::BeginTable("table_scrolly", 2, flags, outer_size))
                 {
                     // The first column will use the default _WidthStretch when ScrollX is Off and _WidthFixed when ScrollX is On
-                    ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide);
-                    ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 12.0f);
-                    // ImGui::TableSetupScrollFreeze(0, 1); // Make row always visible (only works with ScrollY flag enabled?)
+                    ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide | ImGuiTableColumnFlags_DefaultSort, MyItemColumnID_Name);
+                    ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 12.0f, MyItemColumnID_Size);
+                    ImGui::TableSetupScrollFreeze(0, 1); // Make row always visible (only works with ScrollY flag enabled?)
                     ImGui::TableHeadersRow();
 
+
+            
                     for (long unsigned int i = 0; i < Tree.size(); i++)
                     {
                         Node::DisplayNodes(Tree[i], filter, Tree, lastPath, dirCntr);
+
+                        // if(Tree[i].Size > 0)
+                        // {
+                        //     // TODO: FIXME
+                        //     // --------------------------------------------------------
+                        //     // Sort our data if sort specs have been changed!
+                        //     if (ImGuiTableSortSpecs* sorts_specs = ImGui::TableGetSortSpecs())
+                        //     {
+                        //         if (sorts_specs->SpecsDirty)
+                        //         {
+                        //             Tree[0].s_current_sort_specs = sorts_specs; // Store in variable accessible by the sort function.
+                        //             if (Tree.size() > 1)
+                        //                 // qsort(&items[0], (size_t)items.Size, sizeof(items[0]), MyItem::CompareWithSortSpecs);
+                        //                 qsort(&Tree[0], (size_t)Tree.size(), sizeof(Tree[i]), Node::myCompare);
+                        //             Tree[0].s_current_sort_specs = NULL;
+                        //             sorts_specs->SpecsDirty = false;
+                        //         }
+                        //     }
+                        //     // --------------------------------------------------------
+                        // }
                     }
+
+                    // // TODO: FIXME
+                    // // --------------------------------------------------------
+                    // // Sort our data if sort specs have been changed!
+                    // if (ImGuiTableSortSpecs* sorts_specs = ImGui::TableGetSortSpecs())
+                    // {
+                    //     if (sorts_specs->SpecsDirty)
+                    //     {
+                    //         Tree[0].s_current_sort_specs = sorts_specs; // Store in variable accessible by the sort function.
+                    //         if (Tree[0].children.size() > 1)
+                    //             // qsort(&items[0], (size_t)items.Size, sizeof(items[0]), MyItem::CompareWithSortSpecs);
+                    //             qsort(&Tree[0].children, (size_t)Tree[0].children.size(), sizeof(Tree[0].children[0]), Node::myCompare);
+                    //         Tree[0].s_current_sort_specs = NULL;
+                    //         sorts_specs->SpecsDirty = false;
+                    //     }
+                    // }
+                    // // --------------------------------------------------------
+
 
                     ImGui::EndTable();
                 }
@@ -1003,7 +1106,7 @@ int main(int, char**)
                                             ImGui::ColorEdit4("##Color", &Tree[i].children[j].curve.color.x);
                                             ImPlot::SetNextLineStyle(Tree[i].children[j].curve.color, Tree[i].children[j].curve.thickness);
 
-                                            ImGui::SliderFloat("Thickness", &Tree[i].children[j].curve.thickness, 0.1, 10);
+                                            ImGui::SliderFloat("Thickness", &Tree[i].children[j].curve.thickness, 1.0, 20.0);
                                             ImGui::Checkbox("Markers", &Tree[i].children[j].curve.markerFlag);
                                             if(Tree[i].children[j].curve.markerFlag)
                                             {

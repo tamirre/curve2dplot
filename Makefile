@@ -13,7 +13,7 @@
 
 #CXX = g++
 #CXX = clang++
-DEBUG = 1
+DEBUG = 0
 UNAME_S := $(shell uname -s)
 BUILD_DIR = build-$(UNAME_S)
 BIN_DIR = bin
