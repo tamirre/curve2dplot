@@ -293,20 +293,20 @@ struct Node {
 
             if (ImGui::BeginPopupContextItem(root.Name.c_str())) // <-- use last item id as popup id
             {
-                // ImGui::Text("This a popup for \"%s\"!", root.Name.c_str());
+                ImGui::Text("This a popup for \"%s, Index: %d\"!", root.Name.c_str(), root.Index);
                 ImGui::Text("Action:");
                 if (ImGui::Button("Reload"))
                 {
                     int tmpIndex = root.Index;
                     Node dirRoot = Node::listFilesInDirectory(root.Name, lastPath, tmpIndex);
                     Tree.erase(Tree.begin() + root.Index);
+                    Tree.insert(Tree.begin() + (--tmpIndex), dirRoot);
                     dirCntr = 0;
                     for(long unsigned int i = 0; i < Tree.size(); i++)
                     {
                         Tree[i].Index = dirCntr++;
                     }
-                    Tree.insert(Tree.begin() + (--tmpIndex), dirRoot);
-                    dirCntr++;
+                    // dirCntr++;
 
                     ImGui::CloseCurrentPopup();
                 }
@@ -335,16 +335,22 @@ struct Node {
             ImGui::TableNextColumn();
             if (open)
             {
+
                 // --------------------------------------------------------
                 // Sort our data if sort specs have been changed!
                 if (ImGuiTableSortSpecs* sorts_specs = ImGui::TableGetSortSpecs())
                 {
                     if (sorts_specs->SpecsDirty)
                     {
-                        Tree[0].s_current_sort_specs = sorts_specs; // Store in variable accessible by the sort function.
-                        if (root.children.size() > 1)
-                            qsort(&root.children[0], (size_t)root.children.size(), sizeof(root.children[0]), Node::myCompare);
-                        Tree[0].s_current_sort_specs = NULL;
+                        int treeSize = Tree.size();
+                        for(long unsigned int i = 0; i < Tree.size(); i++)
+                        {
+                            Tree[i].s_current_sort_specs = sorts_specs; // Store in variable accessible by the sort function.
+                            if (Tree[i].children.size() > 1)
+                                qsort(&Tree[i].children[0], (size_t)Tree[i].children.size(), sizeof(Tree[i].children[0]), Node::myCompare);
+                            Tree[i].s_current_sort_specs = NULL;
+                        }
+                        
                         sorts_specs->SpecsDirty = false;
                     }
                 }
@@ -796,13 +802,12 @@ int main(int, char**)
                 if (ImGui::BeginTable("table_scrolly", 2, flags, outer_size))
                 {
                     // The first column will use the default _WidthStretch when ScrollX is Off and _WidthFixed when ScrollX is On
-                    ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide | ImGuiTableColumnFlags_DefaultSort, MyItemColumnID_Name);
+                    ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide | ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_PreferSortAscending, MyItemColumnID_Name);
                     ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 12.0f, MyItemColumnID_Size);
                     ImGui::TableSetupScrollFreeze(0, 1); // Make row always visible (only works with ScrollY flag enabled?)
                     ImGui::TableHeadersRow();
 
 
-            
                     for (long unsigned int i = 0; i < Tree.size(); i++)
                     {
                         Node::DisplayNodes(Tree[i], filter, Tree, lastPath, dirCntr);
