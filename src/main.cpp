@@ -247,23 +247,6 @@ struct Node {
                 }
             }
 
-            // // TODO: FIXME
-            // // --------------------------------------------------------
-            // // Sort our data if sort specs have been changed!
-            // if (ImGuiTableSortSpecs* sorts_specs = ImGui::TableGetSortSpecs())
-            // {
-            //     if (sorts_specs->SpecsDirty)
-            //     {
-            //         children[0].s_current_sort_specs = sorts_specs; // Store in variable accessible by the sort function.
-            //         if (children.size() > 1)
-            //             // qsort(&items[0], (size_t)items.Size, sizeof(items[0]), MyItem::CompareWithSortSpecs);
-            //             qsort(&children, (size_t)children.size(), sizeof(children[0]), Node::myCompare);
-            //         children[0].s_current_sort_specs = NULL;
-            //         sorts_specs->SpecsDirty = false;
-            //     }
-            // }
-            // // --------------------------------------------------------
-            
             // TODO: std::move?
             root.children = children;
 
@@ -807,50 +790,10 @@ int main(int, char**)
                     ImGui::TableSetupScrollFreeze(0, 1); // Make row always visible (only works with ScrollY flag enabled?)
                     ImGui::TableHeadersRow();
 
-
                     for (long unsigned int i = 0; i < Tree.size(); i++)
                     {
                         Node::DisplayNodes(Tree[i], filter, Tree, lastPath, dirCntr);
-
-                        // if(Tree[i].Size > 0)
-                        // {
-                        //     // TODO: FIXME
-                        //     // --------------------------------------------------------
-                        //     // Sort our data if sort specs have been changed!
-                        //     if (ImGuiTableSortSpecs* sorts_specs = ImGui::TableGetSortSpecs())
-                        //     {
-                        //         if (sorts_specs->SpecsDirty)
-                        //         {
-                        //             Tree[0].s_current_sort_specs = sorts_specs; // Store in variable accessible by the sort function.
-                        //             if (Tree.size() > 1)
-                        //                 // qsort(&items[0], (size_t)items.Size, sizeof(items[0]), MyItem::CompareWithSortSpecs);
-                        //                 qsort(&Tree[0], (size_t)Tree.size(), sizeof(Tree[i]), Node::myCompare);
-                        //             Tree[0].s_current_sort_specs = NULL;
-                        //             sorts_specs->SpecsDirty = false;
-                        //         }
-                        //     }
-                        //     // --------------------------------------------------------
-                        // }
                     }
-
-                    // // TODO: FIXME
-                    // // --------------------------------------------------------
-                    // // Sort our data if sort specs have been changed!
-                    // if (ImGuiTableSortSpecs* sorts_specs = ImGui::TableGetSortSpecs())
-                    // {
-                    //     if (sorts_specs->SpecsDirty)
-                    //     {
-                    //         Tree[0].s_current_sort_specs = sorts_specs; // Store in variable accessible by the sort function.
-                    //         if (Tree[0].children.size() > 1)
-                    //             // qsort(&items[0], (size_t)items.Size, sizeof(items[0]), MyItem::CompareWithSortSpecs);
-                    //             qsort(&Tree[0].children, (size_t)Tree[0].children.size(), sizeof(Tree[0].children[0]), Node::myCompare);
-                    //         Tree[0].s_current_sort_specs = NULL;
-                    //         sorts_specs->SpecsDirty = false;
-                    //     }
-                    // }
-                    // // --------------------------------------------------------
-
-
                     ImGui::EndTable();
                 }
                 ImGui::EndChild();
