@@ -247,8 +247,8 @@ struct Node {
                 }
             }
 
-            // TODO: std::move?
-            root.children = children;
+            // Using std:move is good practice 
+            root.children = std::move(children);
 
             // printTree(&root);
             closedir(dir);
@@ -285,7 +285,7 @@ struct Node {
                     Tree.erase(Tree.begin() + root.Index);
                     Tree.insert(Tree.begin() + (--tmpIndex), dirRoot);
                     dirCntr = 0;
-                    for(long unsigned int i = 0; i < Tree.size(); i++)
+                    for(size_t i = 0; i < Tree.size(); i++)
                     {
                         Tree[i].Index = dirCntr++;
                     }
@@ -298,7 +298,7 @@ struct Node {
                 {
                     Tree.erase(Tree.begin() + root.Index);
                     dirCntr = 0;
-                    for(long unsigned int i = 0; i < Tree.size(); i++)
+                    for(size_t i = 0; i < Tree.size(); i++)
                     {
                         Tree[i].Index = dirCntr++;
                     }
@@ -326,7 +326,7 @@ struct Node {
                     if (sorts_specs->SpecsDirty)
                     {
                         int treeSize = Tree.size();
-                        for(long unsigned int i = 0; i < Tree.size(); i++)
+                        for(size_t i = 0; i < Tree.size(); i++)
                         {
                             Tree[i].s_current_sort_specs = sorts_specs; // Store in variable accessible by the sort function.
                             if (Tree[i].children.size() > 1)
@@ -337,7 +337,7 @@ struct Node {
                         sorts_specs->SpecsDirty = false;
                     }
                 }
-                for (long unsigned int j = 0; j < root.children.size(); j++)
+                for (size_t j = 0; j < root.children.size(); j++)
                 {
                     Node::DisplayNodes(root.children[j], filter, Tree, lastPath, dirCntr);
                 }
@@ -416,7 +416,7 @@ Curve readCurve(std::string filePath)
     {
         while (std::getline(file, line))
         {
-            if (line[0] != '#')
+            if (line[0] != '#' && line.empty() == false)
             {
                 std::istringstream iss(line);
                 iss >> x >> y;
@@ -428,6 +428,29 @@ Curve readCurve(std::string filePath)
     }
     else std::cout << "Unable to open file"; 
 
+    // Sort vector y based on the sort indices of vector x (if x and y data is unsorted)
+    // Create a vector of indices
+    std::vector<size_t> indices(curve.x.size());
+    for (size_t i = 0; i < indices.size(); ++i) {
+        indices[i] = i;
+    }
+
+    // Sort indices based on comparing values in x
+    std::sort(indices.begin(), indices.end(), [&curve](size_t i1, size_t i2) {
+        return curve.x[i1] < curve.x[i2];
+    });
+
+    // Create sorted vectors
+    std::vector<double> sorted_x(curve.x.size());
+    std::vector<double> sorted_y(curve.y.size());
+    for (size_t i = 0; i < indices.size(); ++i) {
+        sorted_x[i] = curve.x[indices[i]];
+        sorted_y[i] = curve.y[indices[i]];
+    }
+    // Assign sorted vectors back to curve
+    curve.x = std::move(sorted_x);
+    curve.y = std::move(sorted_y);
+    
     curve.xmax = *std::max_element(curve.x.begin(), curve.x.end());
     curve.xmin = *std::min_element(curve.x.begin(), curve.x.end());
 
@@ -453,7 +476,7 @@ Curve readCurve(std::string filePath)
 //         }
 //         // if (node->children) {
 //             std::cout << "Children: " << std::endl;
-//             for (long unsigned int i = 0; i < node->children.size(); i++) {
+//             for (size_t i = 0; i < node->children.size(); i++) {
 //                 std::cout << node->children[i].Name << std::endl;
 //             }
 //         // }
@@ -486,7 +509,7 @@ void openFileDialog(bool *p_open, std::vector<Node> &Tree, std::string &lastPath
 
             // Check whether curve directory already exists in the tree and add it
             bool addNode = true;
-            for(long unsigned int i = 0; i < Tree.size(); i++)
+            for(size_t i = 0; i < Tree.size(); i++)
             {
                 if(Tree[i].Name == filePathName)
                     addNode = false;
@@ -790,7 +813,7 @@ int main(int, char**)
                     ImGui::TableSetupScrollFreeze(0, 1); // Make row always visible (only works with ScrollY flag enabled?)
                     ImGui::TableHeadersRow();
 
-                    for (long unsigned int i = 0; i < Tree.size(); i++)
+                    for (size_t i = 0; i < Tree.size(); i++)
                     {
                         Node::DisplayNodes(Tree[i], filter, Tree, lastPath, dirCntr);
                     }
@@ -880,11 +903,11 @@ int main(int, char**)
 
                     // if (lastFocussedTab == activeTabs[n].Index)
                     // {
-                    //     for (long unsigned int i = 0; i < Tree.size(); i++)
+                    //     for (size_t i = 0; i < Tree.size(); i++)
                     //     {
-                    //         for (long unsigned int j = 0; j < Tree[i].children.size(); j++)
+                    //         for (size_t j = 0; j < Tree[i].children.size(); j++)
                     //         {
-                    //             for(long unsigned int k = 0; k < activeTabs[n].activePlots.size(); k++)
+                    //             for(size_t k = 0; k < activeTabs[n].activePlots.size(); k++)
                     //             {
                     //                 if(Tree[i].children[j].Index == activeTabs[n].activePlots[k])
                     //                 {
@@ -921,9 +944,9 @@ int main(int, char**)
                         if(lastFocussedTab == activeTabs[n].Index && reset_plots)
                         {
                             numCurves = 0;
-                            for (long unsigned int i = 0; i < Tree.size(); i++)
+                            for (size_t i = 0; i < Tree.size(); i++)
                             {
-                                for (long unsigned int j = 0; j < Tree[i].children.size(); j++)
+                                for (size_t j = 0; j < Tree[i].children.size(); j++)
                                 {
                                     Tree[i].children[j].checkboxState = false;
                                     Tree[i].children[j].curve.x.clear();
@@ -933,15 +956,15 @@ int main(int, char**)
                         }
 
                         // Setup state, colors and axis limits in first pass
-                        for (long unsigned int i = 0; i < Tree.size(); i++)
+                        for (size_t i = 0; i < Tree.size(); i++)
                         {
-                            for (long unsigned int j = 0; j < Tree[i].children.size(); j++)
+                            for (size_t j = 0; j < Tree[i].children.size(); j++)
                             {
                                 
                                 if(Tree[i].children[j].checkboxState == true)
                                 {
                                     bool indexNotSavedYet = true;
-                                    for(long unsigned int k = 0; k < activeTabs[n].activePlots.size(); k++)
+                                    for(size_t k = 0; k < activeTabs[n].activePlots.size(); k++)
                                     {
                                         if(Tree[i].children[j].Index == activeTabs[n].activePlots[k])
                                         {
@@ -1009,14 +1032,14 @@ int main(int, char**)
                                 rangesChanged = false;
                             }
                             
-                            for(long unsigned int i = 0; i < Tree.size(); i++)
+                            for(size_t i = 0; i < Tree.size(); i++)
                             {
-                                for(long unsigned int j = 0; j < Tree[i].children.size(); j++)
+                                for(size_t j = 0; j < Tree[i].children.size(); j++)
                                 {
                                     bool inTab = false;
                                     if(lastFocussedTab == activeTabs[n].Index)
                                     {
-                                        for(long unsigned int k = 0; k < activeTabs[n].activePlots.size(); k++)
+                                        for(size_t k = 0; k < activeTabs[n].activePlots.size(); k++)
                                         {
                                             if(Tree[i].children[j].Index == activeTabs[n].activePlots[k])
                                             {
