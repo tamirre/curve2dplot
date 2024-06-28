@@ -22,7 +22,6 @@
 
 #include "dirent.h"
 #include "implot.h"
-// #include "ImGuiFileBrowser.h"
 #include "ImGuiFileDialog.h"
 
 #include <stdio.h>
@@ -52,15 +51,6 @@
 #define IMGUI_CDECL
 #endif
 #endif
-
-// // Enforce cdecl calling convention for functions called by the standard library, in case compilation settings changed the default to e.g. __vectorcall
-// #ifndef IMGUI_CDECL
-// #ifdef _MSC_VER
-// #define IMGUI_CDECL __cdecl
-// #else
-// #define IMGUI_CDECL
-// #endif
-// #endif
 
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 
@@ -167,15 +157,6 @@ struct Node {
     Curve curve;
     static const ImGuiTableSortSpecs* s_current_sort_specs;
 
-    // static int compare(const void * lhs, const void * rhs)
-    // {
-    //     const Node* a = (const Node*)lhs;
-    //     const Node* b = (const Node*)rhs;
-    //     return (strcmp(a->Name.c_str(), b->Name.c_str()));
-    //     // return (a->Index - b->Index);
-    //     // return 1;
-    // }
-
     // Compare function to be used by qsort()
     static int IMGUI_CDECL myCompare(const void* lhs, const void* rhs)
     {
@@ -189,10 +170,8 @@ struct Node {
             int delta = 0;
             switch (sort_spec->ColumnUserID)
             {
-                case MyItemColumnID_Name:           delta = (strcmp(a->Name.c_str(), b->Name.c_str()));     break;
-                case MyItemColumnID_Size:           delta = (a->Size - b->Size);     break;
-                // case MyItemColumnID_Quantity:       delta = (a->Quantity - b->Quantity);    break;
-                // case MyItemColumnID_Description:    delta = (strcmp(a->Name, b->Name));     break;
+                case MyItemColumnID_Name: delta = (strcmp(a->Name.c_str(), b->Name.c_str())); break;
+                case MyItemColumnID_Size: delta = (a->Size - b->Size); break;
                 default: IM_ASSERT(0); break;
             }
             if (delta > 0)
@@ -201,8 +180,7 @@ struct Node {
                 return (sort_spec->SortDirection == ImGuiSortDirection_Ascending) ? -1 : +1;
         }
 
-        // qsort() is instable so always return a way to differenciate items.
-        // Your own compare function may want to avoid fallback on implicit sort specs e.g. a Name compare if it wasn't already part of the sort specs.
+        // qsort() is unstable so always return a way to differenciate items.
         return (a->Index - b->Index);
     }
     
@@ -285,7 +263,7 @@ struct Node {
                     Tree.erase(Tree.begin() + root.Index);
                     Tree.insert(Tree.begin() + (--tmpIndex), dirRoot);
                     dirCntr = 0;
-                    for(size_t i = 0; i < Tree.size(); i++)
+                    for(int64_t i = 0; i < Tree.size(); i++)
                     {
                         Tree[i].Index = dirCntr++;
                     }
@@ -298,7 +276,7 @@ struct Node {
                 {
                     Tree.erase(Tree.begin() + root.Index);
                     dirCntr = 0;
-                    for(size_t i = 0; i < Tree.size(); i++)
+                    for(int64_t i = 0; i < Tree.size(); i++)
                     {
                         Tree[i].Index = dirCntr++;
                     }
@@ -318,26 +296,24 @@ struct Node {
             ImGui::TableNextColumn();
             if (open)
             {
-
-                // --------------------------------------------------------
                 // Sort our data if sort specs have been changed!
                 if (ImGuiTableSortSpecs* sorts_specs = ImGui::TableGetSortSpecs())
                 {
                     if (sorts_specs->SpecsDirty)
                     {
                         int treeSize = Tree.size();
-                        for(size_t i = 0; i < Tree.size(); i++)
+                        for(int64_t i = 0; i < Tree.size(); i++)
                         {
                             Tree[i].s_current_sort_specs = sorts_specs; // Store in variable accessible by the sort function.
                             if (Tree[i].children.size() > 1)
-                                qsort(&Tree[i].children[0], (size_t)Tree[i].children.size(), sizeof(Tree[i].children[0]), Node::myCompare);
+                                qsort(&Tree[i].children[0], (int64_t)Tree[i].children.size(), sizeof(Tree[i].children[0]), Node::myCompare);
                             Tree[i].s_current_sort_specs = NULL;
                         }
                         
                         sorts_specs->SpecsDirty = false;
                     }
                 }
-                for (size_t j = 0; j < root.children.size(); j++)
+                for (int64_t j = 0; j < root.children.size(); j++)
                 {
                     Node::DisplayNodes(root.children[j], filter, Tree, lastPath, dirCntr);
                 }
@@ -356,11 +332,9 @@ struct Node {
                 std::string strNodeIdx = std::string("##") + std::to_string(nodeIdx);
 
                 ImGui::Checkbox(strNodeIdx.c_str(), &root.checkboxState);
-                // ImGui::Checkbox("##", &node->checkboxState);
                 float rowSpacing = ImGui::GetCursorPosX() + 5.0f;
                 ImGui::SameLine();
                 ImGui::SetCursorPosX(rowSpacing);
-                // ImGui::SameLine(1.0f, ImGui::GetCursorPosX());
 
                 ImGui::TreeNodeEx(root.Name.c_str(), ImGuiTreeNodeFlags_Leaf |
                                                      ImGuiTreeNodeFlags_NoTreePushOnOpen |
@@ -394,7 +368,6 @@ double calculateMean(std::vector<double> y, double xmin, double xmax, double del
 {
     double mean = 0.0;
     std::vector<double>(y.begin()+xmin/deltax, y.begin()+xmax/deltax).swap(y);
-    // int newSize = y.size();
     for(double elem : y)
     {
         mean += elem;
@@ -430,20 +403,20 @@ Curve readCurve(std::string filePath)
 
     // Sort vector y based on the sort indices of vector x (if x and y data is unsorted)
     // Create a vector of indices
-    std::vector<size_t> indices(curve.x.size());
-    for (size_t i = 0; i < indices.size(); ++i) {
+    std::vector<int64_t> indices(curve.x.size());
+    for (int64_t i = 0; i < indices.size(); ++i) {
         indices[i] = i;
     }
 
     // Sort indices based on comparing values in x
-    std::sort(indices.begin(), indices.end(), [&curve](size_t i1, size_t i2) {
+    std::sort(indices.begin(), indices.end(), [&curve](int64_t i1, int64_t i2) {
         return curve.x[i1] < curve.x[i2];
     });
 
     // Create sorted vectors
     std::vector<double> sorted_x(curve.x.size());
     std::vector<double> sorted_y(curve.y.size());
-    for (size_t i = 0; i < indices.size(); ++i) {
+    for (int64_t i = 0; i < indices.size(); ++i) {
         sorted_x[i] = curve.x[indices[i]];
         sorted_y[i] = curve.y[indices[i]];
     }
@@ -458,30 +431,25 @@ Curve readCurve(std::string filePath)
     curve.ymin = *std::min_element(curve.y.begin(), curve.y.end());
 
     curve.deltaX = curve.x[1] - curve.x[0];
-    
-    // std::cout << "SIZE: " << curve.x.size() << std::endl;
-    // std::cout.precision(8);
-    // for(int i = 0; i < curve.x.size(); i++)
-    //     std::cout << "X: " << std::fixed << curve.x[i] << ", Y: " << std::fixed << curve.y[i] << std::endl;
-    
+ 
     return curve;
 }
 
-// void printNode(const Node *node) {
-//     if (node) {
-//         std::cout << "Name: " << node->Name << std::endl;
-//         std::cout << "Index: " << node->Index << std::endl;
-//         if (node->parent) {
-//             std::cout << "Parent: " << node->parent->Name << std::endl;
-//         }
-//         // if (node->children) {
-//             std::cout << "Children: " << std::endl;
-//             for (size_t i = 0; i < node->children.size(); i++) {
-//                 std::cout << node->children[i].Name << std::endl;
-//             }
-//         // }
-//     }
-// }
+void printNode(const Node *node) {
+    if (node) {
+        std::cout << "Name: " << node->Name << std::endl;
+        std::cout << "Index: " << node->Index << std::endl;
+        if (node->parent) {
+            std::cout << "Parent: " << node->parent->Name << std::endl;
+        }
+        if (node->children.size() != 0) {
+            std::cout << "Children: " << std::endl;
+            for (int64_t i = 0; i < node->children.size(); i++) {
+                std::cout << node->children[i].Name << std::endl;
+            }
+        }
+    }
+}
 
 void openFileDialog(bool *p_open, std::vector<Node> &Tree, std::string &lastPath, int &dirCntr)
 {
@@ -509,7 +477,7 @@ void openFileDialog(bool *p_open, std::vector<Node> &Tree, std::string &lastPath
 
             // Check whether curve directory already exists in the tree and add it
             bool addNode = true;
-            for(size_t i = 0; i < Tree.size(); i++)
+            for(int64_t i = 0; i < Tree.size(); i++)
             {
                 if(Tree[i].Name == filePathName)
                     addNode = false;
@@ -549,11 +517,8 @@ int main(int, char**)
 
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows
-    //io.ConfigViewportsNoAutoMerge = true;
-    //io.ConfigViewportsNoTaskBarIcon = true;
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -599,8 +564,6 @@ int main(int, char**)
     static std::string lastPath = ".";
     static char xAxisLabelText[128] = "";
     static char yAxisLabelText[128] = "";
-    // static char xAxisMinText[128] = "";
-    // static char xAxisMaxText[128] = "";
     static double xAxisMin = 0.0;
     static double xAxisMax = 1.0;
     bool show_demo_window = false;
@@ -636,6 +599,7 @@ int main(int, char**)
     Tree.push_back(Node::listFilesInDirectory(std::string("z:/Daimler/PKW/1905-Kolbenringe/Jobs/basicmodel-8.1.3/first-crv"), lastPath, dirCntr));
     Tree.push_back(Node::listFilesInDirectory(std::string("z:/Daimler/PKW/1905-Kolbenringe/Jobs/basicmodel-rings/first_all-crv"), lastPath, dirCntr));
     Tree.push_back(Node::listFilesInDirectory(std::string("z:/Daimler/PKW/1905-Kolbenringe/Jobs/basicmodel-restspieltol/first_all-crv"), lastPath, dirCntr));
+    Tree.push_back(Node::listFilesInDirectory(std::string("z:/Daimler/PKW/1905-Kolbenringe/Jobs/basicmodel-midringrestart/first_all-crv"), lastPath, dirCntr));
     // Tree.push_back(Node::listFilesInDirectory(std::string("z:/Daimler/PKW/1905-Kolbenringe/Jobs/basicmodel-rings/first-out"), lastPath, dirCntr));
 
     // bool show_another_window = false;
@@ -761,21 +725,12 @@ int main(int, char**)
             ImGui::InputTextWithHint("##xaxis", "X-Axis Label...", xAxisLabelText, IM_ARRAYSIZE(xAxisLabelText));
             ImGui::InputTextWithHint("##yaxis", "Y-Axis Label...", yAxisLabelText, IM_ARRAYSIZE(yAxisLabelText));
 
-            // Range selection for mean calculation
-            // static char buf2[64] = ""; ImGui::InputText("decimal",     buf2, 64, ImGuiInputTextFlags_CharsDecimal);
-
             ImGui::InputDouble("x min", &xAxisMin);
             ImGui::InputDouble("x max", &xAxisMax);
-            // ImGui::InputTextWithHint("##xaxismin", "x min...", xAxisMinText, IM_ARRAYSIZE(xAxisMinText), ImGuiInputTextFlags_CharsDecimal);
-            // ImGui::InputTextWithHint("##xaxismax", "x max...", xAxisMaxText, IM_ARRAYSIZE(xAxisMaxText), ImGuiInputTextFlags_CharsDecimal);
-            // ImGui::Checkbox("Markers", &Tree[i].children[j].curve.markerFlag);
             ImGui::Checkbox("Show mean", &globalShowMeanFlag);
             
             {
-                // ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
                 // NOTE(Tamir:) Create child such that the scroll bar is only scrolling the file browser, not the entire window
-                // ImGui::BeginChild("ChildBelow", ImVec2(ImGui::GetContentRegionAvail().x,ImGui::GetContentRegionAvail().y), false, window_flags);
-
                 ImGui::BeginChild("ChildBelow", ImVec2(ImGui::GetContentRegionAvail().x,ImGui::GetContentRegionAvail().y));
                 
                 const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
@@ -791,19 +746,6 @@ int main(int, char**)
                                                ImGuiTableFlags_NoBordersInBody |
                                                ImGuiTableFlags_ScrollY;
 
-                    // ImGuiTableFlags_BordersV |
-                    // ImGuiTableFlags_BordersOuterH |
-                    // ImGuiTableFlags_Resizable |
-                    // ImGuiTableFlags_Reorderable | 
-                    // ImGuiTableFlags_RowBg |
-                    // ImGuiTableFlags_NoBordersInBody |
-                    // ImGuiTableFlags_SortMulti |
-                    // ImGuiTableFlags_ScrollY;
-
-                // static ImGuiTableFlags flags =
-             // ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_NoBordersInBody
-            // | ImGuiTableFlags_ScrollY;
-
                 ImVec2 outer_size = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
                 if (ImGui::BeginTable("table_scrolly", 2, flags, outer_size))
                 {
@@ -813,7 +755,7 @@ int main(int, char**)
                     ImGui::TableSetupScrollFreeze(0, 1); // Make row always visible (only works with ScrollY flag enabled?)
                     ImGui::TableHeadersRow();
 
-                    for (size_t i = 0; i < Tree.size(); i++)
+                    for (int64_t i = 0; i < Tree.size(); i++)
                     {
                         Node::DisplayNodes(Tree[i], filter, Tree, lastPath, dirCntr);
                     }
@@ -831,13 +773,6 @@ int main(int, char**)
             ImGui::Begin("Plot");
 
             static bool show_trailing_button = true;
-            // static bool show_leading_button = true;
-
-            // TabItemButton() and Leading/Trailing flags are distinct features which we will demo together.
-            // (It is possible to submit regular tabs with Leading/Trailing flags, or TabItemButton tabs without Leading/Trailing flags...
-            // but they tend to make more sense together)
-
-
             // Expose some other flags which are useful to showcase how they interact with Leading/Trailing tabs
             static ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_AutoSelectNewTabs |
                                                     // TODO: Reordering not working with implot, 
@@ -845,33 +780,7 @@ int main(int, char**)
                                                     // ImGuiTabBarFlags_Reorderable |
                                                     ImGuiTabBarFlags_TabListPopupButton |
                                                     ImGuiTabBarFlags_FittingPolicyResizeDown;
-            // ImGui::CheckboxFlags("ImGuiTabBarFlags_TabListPopupButton", &tab_bar_flags, ImGuiTabBarFlags_TabListPopupButton);
-            // if (ImGui::CheckboxFlags("ImGuiTabBarFlags_FittingPolicyResizeDown", &tab_bar_flags, ImGuiTabBarFlags_FittingPolicyResizeDown))
-            //     tab_bar_flags &= ~(ImGuiTabBarFlags_FittingPolicyMask_ ^ ImGuiTabBarFlags_FittingPolicyResizeDown);
-            // if (ImGui::CheckboxFlags("ImGuiTabBarFlags_FittingPolicyScroll", &tab_bar_flags, ImGuiTabBarFlags_FittingPolicyScroll))
-                // tab_bar_flags &= ~(ImGuiTabBarFlags_FittingPolicyMask_ ^ ImGuiTabBarFlags_FittingPolicyScroll);
-
-            // if (ImGui::BeginTabBar("MyTabBar", tab_bar_flags))
-            // {
-                // Demo a Leading TabItemButton(): click the "?" button to open a menu
-                // if (show_leading_button)
-                //     if (ImGui::TabItemButton("?", ImGuiTabItemFlags_Leading | ImGuiTabItemFlags_NoTooltip))
-                //         ImGui::OpenPopup("MyHelpMenu");
-                // if (ImGui::BeginPopup("MyHelpMenu"))
-                // {
-                //     ImGui::Selectable("Hello!");
-                //     ImGui::EndPopup();
-                // }
-
-                // Demo Trailing Tabs: click the "+" button to add a new tab (in your app you may want to use a font icon instead of the "+")
-                // Note that we submit it before the regular tabs, but because of the ImGuiTabItemFlags_Trailing flag it will always appear at the end.
-
-                // if (show_trailing_button)
-                    // if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip))
-                //         active_tabs.push_back(next_tab_id++); // Add new tab
-
-
-
+           
                 // Create a DockSpace node where any window can be docked
                 ImGuiID dockspace_id = ImGui::GetID("PlotDockSpace");
                 ImGui::DockSpace(dockspace_id);
@@ -879,10 +788,6 @@ int main(int, char**)
                 // Keep track of the last focussed tab
                 static int lastFocussedTab;
                                         
-                // if (show_trailing_button)
-                //     if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip))
-                //         active_tabs.push_back(next_tab_id++); // Add new tab
-                
                 // Submit tab item on add tab button press
                 if (plotFlag)
                 {
@@ -901,13 +806,14 @@ int main(int, char**)
                     // Set dockID to make tab dockable
                     ImGui::SetNextWindowDockID(dockspace_id, redock_all ? ImGuiCond_Always : ImGuiCond_FirstUseEver);
 
+                    // NOTE(Tamir): Attempt to have different plots in different tabs
                     // if (lastFocussedTab == activeTabs[n].Index)
                     // {
-                    //     for (size_t i = 0; i < Tree.size(); i++)
+                    //     for (int64_t i = 0; i < Tree.size(); i++)
                     //     {
-                    //         for (size_t j = 0; j < Tree[i].children.size(); j++)
+                    //         for (int64_t j = 0; j < Tree[i].children.size(); j++)
                     //         {
-                    //             for(size_t k = 0; k < activeTabs[n].activePlots.size(); k++)
+                    //             for(int64_t k = 0; k < activeTabs[n].activePlots.size(); k++)
                     //             {
                     //                 if(Tree[i].children[j].Index == activeTabs[n].activePlots[k])
                     //                 {
@@ -919,7 +825,6 @@ int main(int, char**)
                     // }
                     activeTabs[n].activePlots.clear();
                     
-                    // if (ImGui::BeginTabItem(name, &open, ImGuiTabItemFlags_None))
                     if (ImGui::Begin(name, &open))
                     {
 
@@ -944,9 +849,9 @@ int main(int, char**)
                         if(lastFocussedTab == activeTabs[n].Index && reset_plots)
                         {
                             numCurves = 0;
-                            for (size_t i = 0; i < Tree.size(); i++)
+                            for (int64_t i = 0; i < Tree.size(); i++)
                             {
-                                for (size_t j = 0; j < Tree[i].children.size(); j++)
+                                for (int64_t j = 0; j < Tree[i].children.size(); j++)
                                 {
                                     Tree[i].children[j].checkboxState = false;
                                     Tree[i].children[j].curve.x.clear();
@@ -956,15 +861,15 @@ int main(int, char**)
                         }
 
                         // Setup state, colors and axis limits in first pass
-                        for (size_t i = 0; i < Tree.size(); i++)
+                        for (int64_t i = 0; i < Tree.size(); i++)
                         {
-                            for (size_t j = 0; j < Tree[i].children.size(); j++)
+                            for (int64_t j = 0; j < Tree[i].children.size(); j++)
                             {
                                 
                                 if(Tree[i].children[j].checkboxState == true)
                                 {
                                     bool indexNotSavedYet = true;
-                                    for(size_t k = 0; k < activeTabs[n].activePlots.size(); k++)
+                                    for(int64_t k = 0; k < activeTabs[n].activePlots.size(); k++)
                                     {
                                         if(Tree[i].children[j].Index == activeTabs[n].activePlots[k])
                                         {
@@ -1004,7 +909,6 @@ int main(int, char**)
                                     }
                                 } else {
                                     
-                                    // Tree[i].children[j].curve.color = ImPlot::GetColormapColor(numCurves--);
                                 }
                             }
                         }
@@ -1012,6 +916,7 @@ int main(int, char**)
                         // Plotting in second pass (because we need to calculate axis limits beforehand)
                         if(ImPlot::BeginPlot("##", plotSize))
                         {
+                            // NOTE(Tamir): Debug help
                             // ImGui::BulletText(
                             //     "Tab Index = %d\n"
                             //     "Active Plots (size) = %d\n"
@@ -1024,22 +929,20 @@ int main(int, char**)
                             // );
 
                             ImPlot::SetupAxes(xAxisLabelText, yAxisLabelText);
-                            // ImPlot::SetupAxis(ImAxis_X1, xAxisLabelText);
-                            // ImPlot::SetupAxis(ImAxis_Y1, yAxisLabelText);
                             if(rangesChanged)
                             {
                                 ImPlot::SetupAxesLimits(xmin, xmax, ymin, ymax, ImPlotCond_Always);
                                 rangesChanged = false;
                             }
                             
-                            for(size_t i = 0; i < Tree.size(); i++)
+                            for(int64_t i = 0; i < Tree.size(); i++)
                             {
-                                for(size_t j = 0; j < Tree[i].children.size(); j++)
+                                for(int64_t j = 0; j < Tree[i].children.size(); j++)
                                 {
                                     bool inTab = false;
                                     if(lastFocussedTab == activeTabs[n].Index)
                                     {
-                                        for(size_t k = 0; k < activeTabs[n].activePlots.size(); k++)
+                                        for(int64_t k = 0; k < activeTabs[n].activePlots.size(); k++)
                                         {
                                             if(Tree[i].children[j].Index == activeTabs[n].activePlots[k])
                                             {
@@ -1101,19 +1004,8 @@ int main(int, char**)
                                         if(globalShowMeanFlag)
                                         {
                                             Tree[i].children[j].curve.showMeanFlag = globalShowMeanFlag;
-                                            // uint32_t xMinVal = *static_cast<uint32_t*>(xAxisMinText);
-                                            // uint32_t xMaxVal = *static_cast<uint32_t*>(xAxisMaxText);
-
-                                            // uint32_t xMinVal = (uint32_t)(xAxisMinText);
-                                            // uint32_t xMaxVal = (uint32_t)(xAxisMaxText);
-
-                                            
-                                            // memcpy(&xMinVal, xAxisMinText, sizeof xMinVal);
-                                            // memcpy(&xMaxVal, xAxisMaxText, sizeof xMaxVal);
                                             Tree[i].children[j].curve.mean = calculateMean(Tree[i].children[j].curve.y, xAxisMin, xAxisMax, Tree[i].children[j].curve.deltaX);
-                                            // std::cout << Tree[i].children[j].curve.mean << std::endl;
-                                            // Plot mean if checkbox is checked
-                                            // ImPlot::PlotLine()
+
                                             ImPlot::SetNextLineStyle(Tree[i].children[j].curve.color, Tree[i].children[j].curve.thickness);
                                             std::string meanText = "Mean: " + Tree[i].children[j].pathName;
                                             ImPlot::PlotInfLines(meanText.c_str(), &Tree[i].children[j].curve.mean, 1, ImPlotInfLinesFlags_Horizontal);
@@ -1131,7 +1023,6 @@ int main(int, char**)
                             lastFocussedTab = activeTabs[n].Index;
                         }
                     }
-                
                     if(!open)
                     {
                         activeTabs.erase(activeTabs.Data + n);
@@ -1139,14 +1030,9 @@ int main(int, char**)
                     else
                     {
                         n++;
-                    }
-                    
+                    }   
                     ImGui::End();
-                }
-
-            //     ImGui::EndTabBar();
-            // }
- 
+                } 
             ImGui::End();
         }
         // Rendering
@@ -1175,9 +1061,7 @@ int main(int, char**)
             ImGui::RenderPlatformWindowsDefault();
             glfwMakeContextCurrent(backup_current_context);
         }
-
         glfwSwapBuffers(window);
-        // Sleep(100);
     }
 
     // Cleanup
