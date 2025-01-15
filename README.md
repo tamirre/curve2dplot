@@ -10,6 +10,7 @@ This repository contains a simple application that uses **Dear ImGui** (docking 
 - Cross-platform (with focus on Windows, but can be adapted for other platforms).
 
 ## Screenshot 
+#### Examples from /exampleDirectory showing some signal processing curves:
 ![](assets/example.png)
 
 ### Dependencies
