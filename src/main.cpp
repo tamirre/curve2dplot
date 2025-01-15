@@ -249,12 +249,14 @@ struct Node {
         {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            bool open = ImGui::TreeNodeEx(root.Name.c_str(), ImGuiTreeNodeFlags_SpanFullWidth |
-                                                             ImGuiTreeNodeFlags_DefaultOpen);
+            // bool open = ImGui::TreeNodeEx(root.Name.c_str(), ImGuiTreeNodeFlags_SpanFullWidth |
+                                                             // ImGuiTreeNodeFlags_DefaultOpen);
+            bool open = ImGui::TreeNodeEx(root.Name.c_str(), ImGuiTreeNodeFlags_SpanFullWidth);
+    
 
             if (ImGui::BeginPopupContextItem(root.Name.c_str())) // <-- use last item id as popup id
             {
-                ImGui::Text("This a popup for \"%s, Index: %d\"!", root.Name.c_str(), root.Index);
+                // ImGui::Text("This is a popup for \"%s, Index: %d\"!", root.Name.c_str(), root.Index);
                 ImGui::Text("Action:");
                 if (ImGui::Button("Reload"))
                 {
@@ -584,7 +586,7 @@ int main(int, char**)
     // Initialize one plot tab
     Tab defaultTab = {nextTabId++};
     activeTabs.push_back(defaultTab);
-
+    
     // HACK(Tamir): adding some dirs hardcoded for testing
     
     // Tree.push_back(Node::listFilesInDirectory(std::string("v:/home/tamir/projects/Mesys/Jobs/axial/first-crv"), lastPath, dirCntr));
@@ -712,7 +714,7 @@ int main(int, char**)
             filter.Draw("Search");
             ImGui::SameLine();
             HelpMarker(
-                "Input search string here."
+                "Input search string here (incude,-exclude)."
             );
 
             plotFlag = ImGui::Button("Add Plot Tab");
