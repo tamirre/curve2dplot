@@ -9,6 +9,8 @@ imgui.ini
 run.bat
 build.bat
 shell.bat
-bin/main.exe
+bin/*
 src/vc140.pdb
 *~
+*.rdbg
+misc/*
