@@ -506,7 +506,7 @@ int main(int, char**)
     if (!glfwInit())
         return 1;
     
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "XPlot", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "2D Plot", NULL, NULL);
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);
@@ -586,23 +586,6 @@ int main(int, char**)
     // Initialize one plot tab
     Tab defaultTab = {nextTabId++};
     activeTabs.push_back(defaultTab);
-    
-    // HACK(Tamir): adding some dirs hardcoded for testing
-    
-    // Tree.push_back(Node::listFilesInDirectory(std::string("v:/home/tamir/projects/Mesys/Jobs/axial/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("v:/home/tamir/projects/Mesys/Jobs/radial/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("v:/home/tamir/projects/Mesys/Jobs/mixed/first-crv"), lastPath, dirCntr));
-
-    // Tree.push_back(Node::listFilesInDirectory(std::string("u:/tamir/EleSim/Jobs/WL-FIRST/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("u:/tamir/EleSim/Jobs/WL-MESYS/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("u:/tamir/EleSim/Jobs/WL-FIRST-PZP/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("u:/tamir/EleSim/Jobs/WL-PZP/first-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/Daimler/PKW/1905-Kolbenringe/Jobs/basicmodel/first-crv"), lastPath, dirCntr));
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/Daimler/PKW/1905-Kolbenringe/Jobs/basicmodel-8.1.3/first-crv"), lastPath, dirCntr));
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/Daimler/PKW/1905-Kolbenringe/Jobs/basicmodel-rings/first_all-crv"), lastPath, dirCntr));
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/Daimler/PKW/1905-Kolbenringe/Jobs/basicmodel-restspieltol/first_all-crv"), lastPath, dirCntr));
-    Tree.push_back(Node::listFilesInDirectory(std::string("z:/Daimler/PKW/1905-Kolbenringe/Jobs/basicmodel-midringrestart/first_all-crv"), lastPath, dirCntr));
-    // Tree.push_back(Node::listFilesInDirectory(std::string("z:/Daimler/PKW/1905-Kolbenringe/Jobs/basicmodel-rings/first-out"), lastPath, dirCntr));
 
     // bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.086f, 0.086f, 0.086f, 1.00f);

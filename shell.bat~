@@ -1,5 +1,0 @@
-@echo off
-rem subst w: d:\programming
-call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
-rem set path=w:\gui\src;%path%
-rem CD /D w:\
