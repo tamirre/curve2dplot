@@ -6,8 +6,6 @@ src/build.bat
 *.o
 imgui.ini
 *.ini
-run.bat
-build.bat
 shell.bat
 bin/*
 src/vc140.pdb
