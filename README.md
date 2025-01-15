@@ -9,7 +9,8 @@ This repository contains a simple application that uses **Dear ImGui** (docking 
 - File dialog support powered by **ImGuiFileDialog**.
 - Cross-platform (with focus on Windows, but can be adapted for other platforms).
 
-## Requirements
+## Screenshot 
+![](assets/example.png)
 
 ### Dependencies
 - **Dear ImGui**: This project uses Dear ImGui (docking branch) for rendering and handling the GUI.
