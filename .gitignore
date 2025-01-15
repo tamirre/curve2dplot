@@ -14,3 +14,4 @@ src/vc140.pdb
 *~
 *.rdbg
 misc/*
+*.pdb
