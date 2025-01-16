@@ -39,16 +39,18 @@ On Windows, you can build the project using the provided `build.bat` script.
 
 1. Ensure you have a C++ compiler (e.g., MSVC or MinGW) installed.
 2. Run `build.bat` in the project directory:
+   
    ```batch
-   build.bat
+   .\build.bat
    ```
-   This will:
+   
+This will:
    - Compile the application.
    - Produce an executable that you can run.
 
 ## Running the Application
 
-Once the application is built, you can run the generated executable. The program will launch a window that allows you to:
+Once the application is built, you can run the generated executable from the /bin directory. The program will launch a window that allows you to:
 
 - Open an ASCII file containing 2D curve data (with `x y` values per line).
 - Visualize the curves with interactive zooming and panning support.
@@ -63,6 +65,7 @@ Example data format in the ASCII file:
 3 15
 4 31
 ```
+Some examples from signal processing can be found in the /exampleDirectory subdirectory.
 
 ## License
 
